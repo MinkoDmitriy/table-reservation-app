@@ -1,0 +1,1179 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GastroReserve — Бронирование и Заказ еды</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body x-data="app()" x-init="init()">
+    <!-- LOADING OVERLAY -->
+    <div class="loading-overlay" x-show="isLoading" x-transition:leave="loading-fade-out">
+        <div class="loading-spinner">
+            <div class="spinner-ring"></div>
+            <span class="spinner-text"><span class="logo-accent">Gastro</span>Reserve</span>
+        </div>
+    </div>
+
+    <!-- HEADER -->
+    <header class="app-header">
+        <div class="header-container">
+            <div class="logo" @click="goToHome()" style="cursor: pointer;">
+                <span class="logo-accent">Gastro</span>Reserve
+            </div>
+            
+            <div class="header-controls">
+                <div class="city-selector">
+                    <span class="icon"><i class="fa-solid fa-location-dot"></i></span>
+                    <select x-model.number="selectedLocationId" @change="onLocationChange()">
+                        <option value="" disabled selected>Выберите город</option>
+                        <template x-for="loc in locations" :key="loc.id">
+                            <option :value="loc.id" x-text="loc.name"></option>
+                        </template>
+                    </select>
+                </div>
+                
+                <div class="user-auth-status">
+                    <template x-if="!currentUser">
+                        <button class="btn btn-secondary" @click="openAuthModal('login')">Войти</button>
+                    </template>
+                    <template x-if="currentUser">
+                        <div class="hamburger-wrapper" @click.outside="closeUserMenu()">
+                            <button class="btn btn-secondary hamburger-btn" @click="toggleUserMenu()">
+                                <i class="fa-solid fa-bars"></i>
+                            </button>
+                            <div class="hamburger-dropdown" x-show="showUserMenu" x-transition>
+                                <div class="hamburger-user-info" style="cursor: pointer;" @click="goToProfile(); closeUserMenu();">
+                                    <i class="fa-solid fa-user-circle"></i>
+                                    <span x-text="currentUser.username"></span>
+                                </div>
+                                <div class="hamburger-divider"></div>
+                                <button class="hamburger-item" x-show="isAdmin" @click="goToAdminPanel(); closeUserMenu();">
+                                    <i class="fa-solid fa-screwdriver-wrench"></i> Панель админа
+                                </button>
+                                <button class="hamburger-item" x-show="isAdmin || isManager" @click="goToManagerPanel(); closeUserMenu();">
+                                    <i class="fa-solid fa-list-check"></i> Управление заказами
+                                </button>
+                                <button class="hamburger-item" x-show="!isManager && !isAdmin" @click="goToHistory(); closeUserMenu();">
+                                    <i class="fa-solid fa-clock-rotate-left"></i> Мои заказы
+                                </button>
+                                <div class="hamburger-divider"></div>
+                                <button class="hamburger-item hamburger-logout" @click="logout(); closeUserMenu();">
+                                    <i class="fa-solid fa-right-from-bracket"></i> Выйти
+                                </button>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="main-content">
+        <!-- STEP 1: SELECT CITY VIEW (HERO) -->
+        <section class="view-section hero-section" :class="{ 'active': currentView === 'cities' }">
+            <div class="hero-content">
+                <h1>Изысканные рестораны вашего города</h1>
+                <p>Бронируйте лучшие столики и заказывайте изысканные блюда к назначенному времени</p>
+                
+                <div class="city-cards-grid">
+                    <template x-for="loc in locations" :key="loc.id">
+                        <div class="city-card" @click="selectCity(loc.id, loc.name)">
+                            <div class="city-overlay"></div>
+                            <h3 x-text="loc.name"></h3>
+                            <span class="restaurant-count" x-text="getRestaurantCount(loc.id) + ' заведений'"></span>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </section>
+
+        <!-- STEP 2: SELECT RESTAURANT VIEW -->
+        <section class="view-section" :class="{ 'active': currentView === 'restaurants' }">
+            <div class="section-container">
+                <div class="section-header">
+                    <button class="btn-back" @click="currentView = 'cities'"><i class="fa-solid fa-arrow-left"></i> Назад к городам</button>
+                    <h2 class="section-title">Рестораны в г. <span x-text="selectedLocationName"></span></h2>
+                </div>
+                
+                <div class="restaurants-grid">
+                    <template x-for="place in filteredFoodPlaces" :key="place.id">
+                        <div class="restaurant-card" @click="selectRestaurant(place)">
+                            <div class="card-img-wrapper">
+                                <img :src="getPlaceImage(place.name, place.image_path)" :alt="place.name">
+                                <div class="card-img-overlay">
+                                    <span class="badge" x-text="place.description || 'Ресторан'"></span>
+                                </div>
+                            </div>
+                            <div class="restaurant-card-body">
+                                <h4 x-text="place.name"></h4>
+                                <p class="address"><i class="fa-solid fa-location-dot"></i> <span x-text="place.address"></span></p>
+                                <div class="card-meta">
+                                    <span class="card-rating" x-show="getRatingDisplay(place.id)">
+                                        <i class="fa-solid fa-star" style="color: var(--accent-amber);"></i> <span x-text="getRatingDisplay(place.id)?.avg_rating"></span>
+                                        <span class="review-count" x-text="'(' + getRatingDisplay(place.id)?.ratings_count + ')'"></span>
+                                    </span>
+                                    <span class="card-rating" x-show="!getRatingDisplay(place.id)">
+                                        <i class="fa-regular fa-star" style="color: var(--text-secondary);"></i> <span x-text="getRatingText(place.id) || 'Нет оценок'" style="font-size: 12px;"></span>
+                                    </span>
+                                    <span class="card-time"><i class="fa-solid fa-clock"></i> <span x-text="formatTime(place.open_time) + ' - ' + formatTime(place.close_time)"></span></span>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </section>
+
+        <!-- STEP 3: RESTAURANT DETAIL VIEW (TABS) -->
+        <section class="view-section" :class="{ 'active': currentView === 'detail' }">
+            <div class="restaurant-hero-banner" :style="'background-image: url(' + getPlaceImage(selectedFoodPlace?.name, selectedFoodPlace?.image_path) + ')'">
+                <div class="banner-overlay"></div>
+                <div class="banner-content">
+                    <button class="btn-back light" @click="currentView = 'restaurants'"><i class="fa-solid fa-arrow-left"></i> Все рестораны</button>
+                    <div class="restaurant-meta-details">
+                        <span class="badge" x-text="selectedFoodPlace?.description || 'Кухня'"></span>
+                        <h2 x-text="selectedFoodPlace?.name"></h2>
+                        <p class="address"><span class="icon"><i class="fa-solid fa-location-dot"></i></span> <span x-text="selectedFoodPlace?.address"></span></p>
+                        <p class="rating" x-show="getRatingDisplay(selectedFoodPlaceId)">
+                            <i class="fa-solid fa-star" style="color: var(--accent-amber);"></i>
+                            <span x-text="getRatingDisplay(selectedFoodPlaceId)?.avg_rating"></span>
+                            <span class="review-count" x-text="'(' + getRatingDisplay(selectedFoodPlaceId)?.ratings_count + ' оценок)'"></span>
+                        </p>
+                        <p class="rating" x-show="!getRatingDisplay(selectedFoodPlaceId)">
+                            <i class="fa-regular fa-star" style="color: var(--text-secondary);"></i>
+                            <span class="review-count" x-text="getRatingText(selectedFoodPlaceId) || 'Оценок пока нет'"></span>
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="detail-container">
+                <!-- Rating Widget -->
+                <div class="rating-widget" style="display: flex; align-items: center; gap: 12px; padding: 16px 24px; background: var(--bg-secondary); border-radius: 12px; margin-bottom: 24px;" x-show="currentUser">
+                    <span style="font-weight: 600; color: var(--text-primary);" x-text="canRateFlags[selectedFoodPlaceId] ? 'Ваша оценка:' : 'Оценивание доступно после заказа'"></span>
+                    <div class="star-rating" style="display: flex; gap: 4px;" x-show="canRateFlags[selectedFoodPlaceId]">
+                        <template x-for="star in [1,2,3,4,5]" :key="star">
+                            <i class="fa-star"
+                               :class="{
+                                   'fa-solid': star <= (hoveredStar || selectedStar),
+                                   'fa-regular': star > (hoveredStar || selectedStar)
+                               }"
+                               :style="'cursor: pointer; font-size: 22px; color: ' + (star <= (hoveredStar || selectedStar) ? 'var(--accent-amber)' : 'var(--text-secondary)') + '; transition: color 0.15s;'"
+                               @mouseenter="hoveredStar = star"
+                               @mouseleave="hoveredStar = 0"
+                               @click="submitRating(selectedFoodPlaceId, star)">
+                            </i>
+                        </template>
+                    </div>
+                    <span x-show="selectedStar && canRateFlags[selectedFoodPlaceId]" style="font-size: 13px; color: var(--text-secondary);" x-text="'Вы поставили ' + selectedStar + ' (нажмите на звезду ещё раз, чтобы убрать оценку)'"></span>
+                </div>
+                <div class="rating-widget" style="display: flex; align-items: center; gap: 12px; padding: 16px 24px; background: var(--bg-secondary); border-radius: 12px; margin-bottom: 24px;" x-show="!currentUser">
+                    <span style="font-weight: 600; color: var(--text-secondary);">Войдите, чтобы оценить заведение</span>
+                    <button class="btn btn-secondary btn-sm" @click="openAuthModal('login')" style="padding: 4px 12px; font-size: 13px;">Войти</button>
+                </div>
+
+                <!-- Tab Controls -->
+                <div class="tabs-nav">
+                    <button class="tab-btn" :class="{ 'active': currentTab === 'reservation' }" @click="currentTab = 'reservation'">
+                        <span class="icon"><i class="fa-solid fa-calendar-days"></i></span> Бронирование столика
+                    </button>
+                    <button class="tab-btn" :class="{ 'active': currentTab === 'ordering' }" @click="currentTab = 'ordering'">
+                        <span class="icon"><i class="fa-solid fa-utensils"></i></span> Предзаказ еды
+                    </button>
+                </div>
+
+                <!-- TAB CONTENT: RESERVATION -->
+                <div class="tab-pane" :class="{ 'active': currentTab === 'reservation' }" x-show="currentTab === 'reservation'">
+                    <div class="reservation-layout">
+                        <div class="reservation-form-panel">
+                            <h3>Параметры бронирования</h3>
+                            <form @submit.prevent>
+                                <div class="form-group">
+                                    <label>Дата визита</label>
+                                    <input type="date" x-model="resDate" @change="onReservationParamChange()" required>
+                                </div>
+
+                                <div class="form-group">
+                                    <label>Время прибытия</label>
+                                    <select x-model="resTime" @change="onReservationParamChange()" required>
+                                        <option value="" disabled>Выберите время</option>
+                                        <option value="12:00">12:00</option>
+                                        <option value="13:00">13:00</option>
+                                        <option value="14:00">14:00</option>
+                                        <option value="15:00">15:00</option>
+                                        <option value="16:00">16:00</option>
+                                        <option value="17:00">17:00</option>
+                                        <option value="18:00">18:00</option>
+                                        <option value="19:00">19:00</option>
+                                        <option value="20:00">20:00</option>
+                                        <option value="21:00">21:00</option>
+                                        <option value="22:00">22:00</option>
+                                    </select>
+                                </div>
+
+                                <div class="form-group">
+                                    <label>Количество гостей: <span x-text="resGuests"></span></label>
+                                    <input type="range" min="1" max="10" x-model.number="resGuests" @input="onReservationParamChange()" step="1">
+                                </div>
+
+                                <div class="form-group">
+                                    <label>Номер телефона</label>
+                                    <input type="tel" x-model="resPhone" placeholder="+7 (999) 123-45-67" required>
+                                </div>
+
+                                <div class="form-group">
+                                    <label>Пожелания к бронированию</label>
+                                    <textarea x-model="resComments" placeholder="Например: столик у окна, тихая зона..." rows="3"></textarea>
+                                </div>
+                            </form>
+                        </div>
+
+                        <div class="table-map-panel">
+                            <h3>Выберите столик</h3>
+                            <p class="map-hint">Доступные столики для бронирования</p>
+                            
+                            <div class="table-list">
+                                <template x-for="table in foodTables" :key="table.id">
+                                    <div class="table-list-item"
+                                         :class="{
+                                             'occupied': occupiedTableIds.includes(table.id),
+                                             'selected': selectedTableId === table.id,
+                                             'available': !occupiedTableIds.includes(table.id) && selectedTableId !== table.id
+                                         }"
+                                         @click="!occupiedTableIds.includes(table.id) && selectTable(table)">
+                                        <div class="table-list-info">
+                                            <span class="table-list-number" x-text="'Стол ' + table.table_number"></span>
+                                            <span class="table-list-seats" x-text="table.max_seats + ' гостей'"></span>
+                                        </div>
+                                        <div class="table-list-status">
+                                            <span x-show="occupiedTableIds.includes(table.id)" style="color: var(--accent-red);">Занят</span>
+                                            <span x-show="!occupiedTableIds.includes(table.id) && selectedTableId !== table.id" style="color: var(--accent-emerald);">Свободен</span>
+                                            <span x-show="selectedTableId === table.id" style="color: var(--accent-amber);">Выбран</span>
+                                        </div>
+                                    </div>
+                                </template>
+                            </div>
+
+                            <button class="btn btn-primary btn-block" style="margin-top: 20px;" :disabled="!selectedTableId" @click="submitReservation()">
+                                Забронировать стол
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB CONTENT: FOOD ORDERING -->
+                <div class="tab-pane" :class="{ 'active': currentTab === 'ordering' }" x-show="currentTab === 'ordering'">
+                    <div class="menu-layout">
+                        <!-- Menu Categories & Items -->
+                        <div class="menu-products-panel">
+                            <div class="menu-categories">
+                                <button class="category-btn" :class="{ 'active': selectedCategory === 'all' }" @click="selectedCategory = 'all'">Все блюда</button>
+                                <button class="category-btn" :class="{ 'active': selectedCategory === 'starters' }" @click="selectedCategory = 'starters'">Закуски</button>
+                                <button class="category-btn" :class="{ 'active': selectedCategory === 'mains' }" @click="selectedCategory = 'mains'">Горячее</button>
+                                <button class="category-btn" :class="{ 'active': selectedCategory === 'desserts' }" @click="selectedCategory = 'desserts'">Десерты</button>
+                                <button class="category-btn" :class="{ 'active': selectedCategory === 'drinks' }" @click="selectedCategory = 'drinks'">Напитки</button>
+                            </div>
+
+                            <div class="menu-grid">
+                                <template x-for="item in filteredMenuItems" :key="item.id">
+                                    <div class="menu-card">
+                                        <img class="menu-card-img" :src="getMenuItemImage(item.name, item.image_path)" :alt="item.name">
+                                        <div class="menu-card-body">
+                                            <h5 x-text="item.name"></h5>
+                                            <p class="desc" x-text="item.description"></p>
+                                            <div class="menu-card-footer">
+                                                <span class="menu-price" x-text="item.price + ' ₽'"></span>
+                                                <button class="btn-add-to-cart" @click="addToBasket(item)">
+                                                    <i class="fa-solid fa-plus"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+
+                        <!-- Basket panel -->
+                        <div class="menu-basket-panel">
+                            <div class="basket-card">
+                                <h3>Ваш заказ</h3>
+                                
+                                <div class="basket-items-list">
+                                    <template x-if="basketItems.length === 0">
+                                        <div class="empty-basket-state">
+                                            <span class="basket-icon"><i class="fa-solid fa-cart-shopping"></i></span>
+                                            <p>Корзина пуста. Выберите блюда из меню, чтобы оформить предзаказ к столу.</p>
+                                        </div>
+                                    </template>
+                                    
+                                    <template x-if="basketItems.length > 0">
+                                        <div style="width: 100%; display: flex; flex-direction: column; gap: 16px;">
+                                            <template x-for="bitem in basketItems" :key="bitem.id">
+                                                <div class="basket-item">
+                                                    <div class="basket-item-info">
+                                                        <h6 x-text="bitem.menu_item?.name"></h6>
+                                                        <span class="price" x-text="bitem.menu_item?.price + ' ₽'"></span>
+                                                    </div>
+                                                    <div class="basket-item-controls">
+                                                        <button class="btn-counter" @click="decreaseBasketItem(bitem)">-</button>
+                                                        <span class="basket-item-qty" x-text="bitem.item_quantity"></span>
+                                                        <button class="btn-counter" @click="increaseBasketItem(bitem)">+</button>
+                                                    </div>
+                                                </div>
+                                            </template>
+                                        </div>
+                                    </template>
+                                </div>
+
+                                <div class="basket-summary" x-show="basketItems.length > 0">
+                                    <div class="summary-row">
+                                        <span>Сумма заказа:</span>
+                                        <span class="price-val" x-text="basketTotal() + ' ₽'"></span>
+                                    </div>
+
+                                    <div class="form-group margin-top">
+                                        <label>Номер телефона (обязательно)</label>
+                                        <input type="tel" x-model="orderPhone" placeholder="+7 (999) 999-99-99" required>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label>Подать к указанному времени</label>
+                                        <select x-model="orderType" required>
+                                            <option value="dinein">К моменту прибытия</option>
+                                            <option value="delivery">Доставка курьером</option>
+                                        </select>
+                                    </div>
+
+                                    <div class="form-group" x-show="orderType === 'delivery'">
+                                        <label>Адрес доставки (обязательно)</label>
+                                        <input type="text" x-model="orderAddress" placeholder="Улица, дом, квартира">
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label>Пожелания к заказу</label>
+                                        <textarea x-model="orderNotes" placeholder="Например: без лука,.extra соус..." rows="2"></textarea>
+                                    </div>
+
+                                    <button class="btn btn-primary btn-block" @click="submitOrder()">
+                                        Оформить предзаказ
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- STEP 4: ORDER HISTORY VIEW -->
+        <section class="view-section" :class="{ 'active': currentView === 'history' }" x-show="currentView === 'history'">
+            <div class="section-container">
+                <div class="section-header">
+                    <button class="btn-back" @click="goToHome()"><i class="fa-solid fa-arrow-left"></i> На главную</button>
+                    <h2 class="section-title">Мои заказы и бронирования</h2>
+                </div>
+
+                <template x-if="userHistory.length === 0">
+                    <div style="text-align: center; padding: 60px 20px; color: var(--text-secondary);">
+                        <i class="fa-solid fa-clock-rotate-left" style="font-size: 48px; margin-bottom: 16px; opacity: 0.3;"></i>
+                        <p style="font-size: 16px;">У вас пока нет заказов и бронирований</p>
+                    </div>
+                </template>
+
+                <div class="table-responsive" x-show="userHistory.length > 0">
+                    <table class="manager-table">
+                        <thead>
+                            <tr>
+                                <th>ТИП</th>
+                                <th>ЗАВЕДЕНИЕ</th>
+                                <th>ДАТА</th>
+                                <th>ДЕТАЛИ</th>
+                                <th>СТАТУС</th>
+                                <th>ОЦЕНКА</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <template x-for="item in userHistory" :key="item.type + '_' + item.id">
+                                <tr>
+                                    <td>
+                                        <span class="status-badge" :class="{
+                                            'new': item.type === 'reservation',
+                                            'preparing': item.type === 'order'
+                                        }" x-text="item.type === 'order' ? 'ЗАКАЗ' : 'БРОНЬ'"></span>
+                                    </td>
+                                    <td style="font-weight: 600; color: var(--text-primary);" x-text="item.place_name"></td>
+                                    <td style="font-size: 13px; color: var(--text-secondary);" x-text="formatHistoryDate(item.date)"></td>
+                                    <td>
+                                        <template x-if="item.type === 'order'">
+                                            <div>
+                                                <span x-text="item.order_type === 'delivery' ? 'Доставка' : 'В ресторане'" style="font-size: 13px;"></span>
+                                                <span x-show="item.phone" style="font-size: 12px; color: var(--text-secondary); display: block;" x-text="item.phone"></span>
+                                            </div>
+                                        </template>
+                                        <template x-if="item.type === 'reservation'">
+                                            <div>
+                                                <span x-text="'Стол ' + (item.table_number || item.id)" style="font-size: 13px;"></span>
+                                                <span style="font-size: 12px; color: var(--text-secondary); display: block;" x-text="item.duration + ' мин.'"></span>
+                                            </div>
+                                        </template>
+                                    </td>
+                                    <td>
+                                        <span class="status-badge" :class="item.status" x-text="getHistoryStatusDisplay(item.status)"></span>
+                                    </td>
+                                    <td>
+                                        <button class="btn btn-secondary btn-sm" x-show="item.food_place_id"
+                                                @click="selectRestaurantById(item.food_place_id)"
+                                                style="padding: 4px 10px; font-size: 12px;">
+                                            <i class="fa-solid fa-star" style="color: var(--accent-amber);"></i> Оценить
+                                        </button>
+                                    </td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- STEP 5: MANAGER PANEL VIEW -->
+        <section class="view-section" :class="{ 'active': currentView === 'manager' }" x-show="currentView === 'manager'">
+            <div class="section-container">
+                    <div class="section-header">
+                        <button class="btn-back" @click="goToHome()"><i class="fa-solid fa-arrow-left"></i> На главную</button>
+                        <h2 class="section-title">Кабинет менеджера</h2>
+                    </div>
+                    <div style="display: flex; gap: 12px; align-items: center; margin-bottom: 20px; flex-wrap: wrap;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <label style="font-weight: 500; white-space: nowrap;">Город:</label>
+                            <select x-model.number="managerSelectedCityId"
+                                    @change="managerSelectedPlaceId = managerFilteredPlaceIds()[0] || null; refreshManagerData()"
+                                    style="padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-card); color: var(--text-primary);">
+                                <template x-for="city in managerCities()" :key="city.id">
+                                    <option :value="city.id" x-text="city.name"></option>
+                                </template>
+                            </select>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <label style="font-weight: 500; white-space: nowrap;">Ресторан:</label>
+                            <select x-model.number="managerSelectedPlaceId" @change="refreshManagerData()"
+                                    style="padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-card); color: var(--text-primary);">
+                                <template x-for="placeId in managerFilteredPlaceIds()" :key="placeId">
+                                    <option :value="placeId" x-text="getPlaceNameById(placeId)"></option>
+                                </template>
+                            </select>
+                        </div>
+                    </div>
+                
+                <!-- Sub-tab Navigation -->
+                <div class="tabs-nav" style="margin-top: 0; margin-bottom: 30px;">
+                    <button class="tab-btn" :class="{ 'active': managerTab === 'orders' }" @click="managerTab = 'orders'">
+                        <span class="icon"><i class="fa-solid fa-list-check"></i></span> Заказы и Брони
+                    </button>
+                    <button class="tab-btn" :class="{ 'active': managerTab === 'menu' }" @click="managerTab = 'menu'">
+                        <span class="icon"><i class="fa-solid fa-utensils"></i></span> Меню ресторана
+                    </button>
+                </div>
+                
+                <!-- SUB-TAB: ORDERS -->
+                <div class="tab-pane" :class="{ 'active': managerTab === 'orders' }" x-show="managerTab === 'orders'">
+                    <div class="manager-layout">
+                        <!-- Stats Grid -->
+                        <div class="manager-stats-grid">
+                            <div class="stats-card">
+                                <span class="stats-label">ВСЕГО ЗАКАЗОВ</span>
+                                <span class="stats-value" x-text="totalOrders"></span>
+                            </div>
+                            <div class="stats-card">
+                                <span class="stats-label">БРОНИРОВАНИЙ СТОЛОВ</span>
+                                <span class="stats-value" x-text="totalReservations"></span>
+                            </div>
+                            <div class="stats-card">
+                                <span class="stats-label">ВЫРУЧКА (ЗАКАЗЫ)</span>
+                                <span class="stats-value" x-text="revenue + ' ₽'"></span>
+                            </div>
+                        </div>
+
+                        <!-- Orders Panel -->
+                        <div class="manager-panels-container">
+                            <div class="orders-list-panel">
+                                <h3>Список заказов и бронирований</h3>
+                                <div class="table-responsive">
+                                    <table class="manager-table">
+                                        <thead>
+                                            <tr>
+                                                <th>ID</th>
+                                                <th>ТИП</th>
+                                                <th>КЛИЕНТ / ТЕЛЕФОН</th>
+                                                <th>ДЕТАЛИ / АДРЕС</th>
+                                                <th>СУММА</th>
+                                                <th>СТАТУС</th>
+                                                <th>ИЗМЕНИТЬ СТАТУС</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <template x-for="order in managerCombinedList()" :key="order.unique_id">
+                                                <tr>
+                                                    <td>
+                                                        <div x-text="order.display_id" style="font-weight: 700; color: var(--text-primary);"></div>
+                                                        <div x-text="order.time_only" style="font-size: 12px; color: var(--text-secondary); margin-top: 4px;"></div>
+                                                    </td>
+                                                    <td>
+                                                        <span class="status-badge" :class="{
+                                                            'new': order.type === 'reservation',
+                                                            'preparing': order.type === 'dinein',
+                                                            'ready': order.type === 'delivery'
+                                                        }" x-text="order.type_display"></span>
+                                                    </td>
+                                                    <td>
+                                                        <div class="client-name" x-text="order.clientName" style="font-weight: 600;"></div>
+                                                        <div class="client-phone" x-text="order.phone" style="font-size: 13px; color: var(--text-secondary); margin-top: 4px;"></div>
+                                                    </td>
+                                                    <td>
+                                                        <div class="order-details-text" x-text="order.details"></div>
+                                                        <div class="order-address-text" x-show="order.subtext" x-text="order.subtext" style="font-size: 13px; color: var(--text-secondary); margin-top: 4px;"></div>
+                                                    </td>
+                                                    <td x-text="order.type === 'reservation' ? '—' : order.total + ' ₽'" style="font-weight: 700;"></td>
+                                                    <td>
+                                                        <span class="status-badge" :class="order.status" x-text="order.status_display"></span>
+                                                    </td>
+                                                    <td>
+                                                        <select class="status-select" :value="order.status" 
+                                                                @change="order.type === 'reservation' ? updateReservationStatus(order.id, $event.target.value) : updateOrderStatus(order.id, $event.target.value)">
+                                                            <option value="new">Новый</option>
+                                                            <option value="preparing" x-show="order.type !== 'reservation'">Готовится</option>
+                                                            <option value="ready" x-show="order.type !== 'reservation'">Готов</option>
+                                                            <option value="completed">Завершен</option>
+                                                            <option value="cancelled">Отменен</option>
+                                                        </select>
+                                                    </td>
+                                                </tr>
+                                            </template>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- SUB-TAB: MENU MANAGEMENT -->
+                <div class="tab-pane" :class="{ 'active': managerTab === 'menu' }" x-show="managerTab === 'menu'">
+                    <div class="reservation-layout">
+                        <!-- Left Panel: Add Menu Item Form -->
+                        <div class="reservation-form-panel">
+                            <h3>Добавить новое блюдо</h3>
+                            <form @submit.prevent="addMenuItem()">
+                                <div class="form-group">
+                                    <label>Название блюда</label>
+                                    <input type="text" x-model="newMenuName" placeholder="Например: Паста Карбонара" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Описание / Состав</label>
+                                    <textarea x-model="newMenuDesc" placeholder="Ингредиенты, особенности..." rows="3"></textarea>
+                                </div>
+                                <div class="form-group">
+                                    <label>Цена (₽)</label>
+                                    <input type="number" step="0.01" x-model.number="newMenuPrice" placeholder="Цена в рублях" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Изображение блюда</label>
+                                    <input type="file" @change="handleImageUpload($event, 'menu')" accept="image/*">
+                                    <template x-if="newMenuImagePath">
+                                        <div style="margin-top: 10px; display: flex; align-items: center; gap: 10px;">
+                                            <img :src="newMenuImagePath.startsWith('http') ? newMenuImagePath : 'http://localhost:8000' + newMenuImagePath" style="width: 80px; height: 50px; object-fit: cover; border-radius: 4px;">
+                                            <button type="button" class="btn btn-secondary btn-sm" @click="clearUploadedImage('menu')" style="padding: 4px 8px; font-size: 11px;">Удалить</button>
+                                        </div>
+                                    </template>
+                                </div>
+                                <button type="submit" class="btn btn-primary btn-block">Добавить в меню</button>
+                            </form>
+                        </div>
+                        
+                        <!-- Right Panel: Current Menu List -->
+                        <div class="table-map-panel" style="padding: 30px;">
+                            <h3>Текущие позиции меню</h3>
+                            <p class="map-hint">Список блюд, предлагаемых в этом ресторане</p>
+                            <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                                <table class="manager-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Блюдо</th>
+                                            <th>Цена</th>
+                                            <th>Действие</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <template x-for="item in menuItems" :key="item.id">
+                                            <tr>
+                                                <td>
+                                                    <div style="font-weight: 600; color: var(--text-primary);" x-text="item.name"></div>
+                                                    <div style="font-size: 12px; color: var(--text-secondary); margin-top: 4px;" x-text="item.description"></div>
+                                                </td>
+                                                <td style="font-weight: 700; color: var(--accent-amber);" x-text="item.price + ' ₽'"></td>
+                                                <td>
+                                                    <button class="btn btn-secondary btn-sm" @click="deleteMenuItem(item.id)" style="padding: 4px 8px; font-size: 11px;">
+                                                        <i class="fa-solid fa-trash"></i> Удалить
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        </template>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SUB-TAB: ADMIN TOOLS (removed from manager panel) -->
+            </div>
+        </section>
+
+        <!-- STEP 6: PROFILE VIEW -->
+        <section class="view-section" :class="{ 'active': currentView === 'profile' }" x-show="currentView === 'profile'">
+            <div class="section-container">
+                <div class="section-header">
+                    <button class="btn-back" @click="goToHome()"><i class="fa-solid fa-arrow-left"></i> На главную</button>
+                    <h2 class="section-title">Личный кабинет</h2>
+                </div>
+
+                <div style="max-width: 480px;">
+                    <div style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--border-radius-md); padding: 30px;">
+                        <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 30px;">
+                            <div style="width: 60px; height: 60px; border-radius: 50%; background: rgba(212, 175, 55, 0.15); display: flex; align-items: center; justify-content: center;">
+                                <i class="fa-solid fa-user" style="font-size: 28px; color: var(--accent-amber);"></i>
+                            </div>
+                            <div>
+                                <div style="font-size: 20px; font-weight: 700; color: var(--text-primary);" x-text="currentUser?.username"></div>
+                                <div style="font-size: 13px; color: var(--text-secondary);" x-text="isAdmin ? 'Администратор' : (isManager ? 'Менеджер' : 'Клиент')"></div>
+                            </div>
+                        </div>
+
+                        <form @submit.prevent="updateProfile()">
+                            <div class="form-group">
+                                <label>Имя пользователя</label>
+                                <input type="text" x-model="profileName" placeholder="Ваше имя" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Номер телефона</label>
+                                <input type="tel" x-model="profilePhone" placeholder="+7 (999) 123-45-67">
+                            </div>
+                            <button type="submit" class="btn btn-primary btn-block">Сохранить изменения</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- STEP 7: ADMIN PANEL VIEW -->
+        <section class="view-section" :class="{ 'active': currentView === 'admin' }" x-show="currentView === 'admin'">
+            <div class="section-container">
+                <div class="section-header">
+                    <button class="btn-back" @click="goToHome()"><i class="fa-solid fa-arrow-left"></i> На главную</button>
+                    <h2 class="section-title">Панель администратора</h2>
+                </div>
+
+                <div class="tabs-nav" style="margin-top: 0; margin-bottom: 30px;">
+                    <button class="tab-btn" :class="{ 'active': adminTab === 'users' }" @click="adminTab = 'users'">
+                        <span class="icon"><i class="fa-solid fa-users"></i></span> Пользователи
+                    </button>
+                    <button class="tab-btn" :class="{ 'active': adminTab === 'cities' }" @click="adminTab = 'cities'">
+                        <span class="icon"><i class="fa-solid fa-city"></i></span> Города
+                    </button>
+                    <button class="tab-btn" :class="{ 'active': adminTab === 'restaurants' }" @click="adminTab = 'restaurants'">
+                        <span class="icon"><i class="fa-solid fa-utensils"></i></span> Рестораны
+                    </button>
+                    <button class="tab-btn" :class="{ 'active': adminTab === 'managers' }" @click="adminTab = 'managers'">
+                        <span class="icon"><i class="fa-solid fa-user-tie"></i></span> Менеджеры
+                    </button>
+                </div>
+
+                <!-- SUB-TAB: USERS -->
+                <div class="tab-pane" :class="{ 'active': adminTab === 'users' }" x-show="adminTab === 'users'">
+                    <div class="reservation-layout">
+                        <div class="reservation-form-panel">
+                            <h3>Добавить пользователя</h3>
+                            <form @submit.prevent="adminCreateUser()">
+                                <div class="form-group">
+                                    <label>Имя пользователя</label>
+                                    <input type="text" x-model="adminNewUserName" placeholder="Введите имя" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Пароль</label>
+                                    <input type="password" x-model="adminNewUserPassword" placeholder="Минимум 8 символов" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Роль</label>
+                                    <select x-model="adminNewUserRole">
+                                        <option value="client">Клиент</option>
+                                        <option value="manager">Менеджер</option>
+                                        <option value="admin">Админ</option>
+                                    </select>
+                                </div>
+                                <button type="submit" class="btn btn-primary btn-block">Создать пользователя</button>
+                            </form>
+                        </div>
+                        <div class="table-map-panel" style="padding: 30px;">
+                            <h3>Все пользователи</h3>
+                            <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
+                                <table class="manager-table">
+                                    <thead>
+                                        <tr>
+                                            <th>ID</th>
+                                            <th>Имя</th>
+                                            <th>Роль</th>
+                                            <th>Действия</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <template x-for="user in adminUsers" :key="user.id">
+                                            <tr>
+                                                <td x-text="user.id"></td>
+                                                <td>
+                                                    <template x-if="adminEditUserId === user.id">
+                                                        <input type="text" x-model="adminEditUserName" style="padding: 4px 8px; border-radius: 4px; border: 1px solid var(--border-color);">
+                                                    </template>
+                                                    <template x-if="adminEditUserId !== user.id">
+                                                        <span x-text="user.name"></span>
+                                                    </template>
+                                                </td>
+                                                <td>
+                                                    <template x-if="adminEditUserId === user.id">
+                                                        <select x-model="adminEditUserRole" style="padding: 4px 8px; border-radius: 4px; border: 1px solid var(--border-color);">
+                                                            <option value="client">Клиент</option>
+                                                            <option value="manager">Менеджер</option>
+                                                            <option value="admin">Админ</option>
+                                                        </select>
+                                                    </template>
+                                                    <template x-if="adminEditUserId !== user.id">
+                                                        <span class="status-badge" :class="{
+                                                            'new': user.role?.name === 'admin',
+                                                            'preparing': user.role?.name === 'manager',
+                                                            'ready': user.role?.name === 'client'
+                                                        }" x-text="user.role?.name || 'client'"></span>
+                                                    </template>
+                                                </td>
+                                                <td>
+                                                    <template x-if="adminEditUserId === user.id">
+                                                        <div style="display: flex; gap: 4px;">
+                                                            <button class="btn btn-primary btn-sm" @click="adminSaveEditUser()" style="padding: 4px 8px; font-size: 11px;">
+                                                                <i class="fa-solid fa-check"></i> Сохранить
+                                                            </button>
+                                                            <button class="btn btn-secondary btn-sm" @click="adminEditUserId = null" style="padding: 4px 8px; font-size: 11px;">
+                                                                <i class="fa-solid fa-xmark"></i> Отмена
+                                                            </button>
+                                                        </div>
+                                                    </template>
+                                                    <template x-if="adminEditUserId !== user.id">
+                                                        <div style="display: flex; gap: 4px;">
+                                                            <button class="btn btn-secondary btn-sm" @click="adminStartEditUser(user)" style="padding: 4px 8px; font-size: 11px;">
+                                                                <i class="fa-solid fa-pen"></i>
+                                                            </button>
+                                                            <button class="btn btn-secondary btn-sm" @click="adminDeleteUser(user.id)" style="padding: 4px 8px; font-size: 11px; color: var(--accent-red);">
+                                                                <i class="fa-solid fa-trash"></i>
+                                                            </button>
+                                                        </div>
+                                                    </template>
+                                                </td>
+                                            </tr>
+                                        </template>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SUB-TAB: CITIES -->
+                <div class="tab-pane" :class="{ 'active': adminTab === 'cities' }" x-show="adminTab === 'cities'">
+                    <div class="reservation-layout">
+                        <div class="reservation-form-panel">
+                            <h3>Добавить город</h3>
+                            <form @submit.prevent="adminAddCity()">
+                                <div class="form-group">
+                                    <label>Название города</label>
+                                    <input type="text" x-model="adminNewCityName" placeholder="Например: Новосибирск" required>
+                                </div>
+                                <button type="submit" class="btn btn-primary btn-block">Добавить город</button>
+                            </form>
+                        </div>
+                        <div class="table-map-panel" style="padding: 30px;">
+                            <h3>Список городов</h3>
+                            <div class="table-responsive">
+                                <table class="manager-table">
+                                    <thead>
+                                        <tr>
+                                            <th>ID</th>
+                                            <th>Название</th>
+                                            <th>Ресторанов</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <template x-for="loc in locations" :key="loc.id">
+                                            <tr>
+                                                <td x-text="loc.id"></td>
+                                                <td x-text="loc.name"></td>
+                                                <td x-text="getRestaurantCount(loc.id)"></td>
+                                            </tr>
+                                        </template>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SUB-TAB: RESTAURANTS -->
+                <div class="tab-pane" :class="{ 'active': adminTab === 'restaurants' }" x-show="adminTab === 'restaurants'">
+                    <div class="reservation-layout">
+                        <div class="reservation-form-panel">
+                            <h3>Добавить ресторан</h3>
+                            <form @submit.prevent="adminAddPlace()">
+                                <div class="form-group">
+                                    <label>Город</label>
+                                    <select x-model="adminNewPlaceLocationId" required>
+                                        <option value="" disabled selected>Выберите город</option>
+                                        <template x-for="loc in locations" :key="loc.id">
+                                            <option :value="loc.id" x-text="loc.name"></option>
+                                        </template>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>Название ресторана</label>
+                                    <input type="text" x-model="adminNewPlaceName" placeholder="Название" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Адрес</label>
+                                    <input type="text" x-model="adminNewPlaceAddress" placeholder="Адрес" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Кухня / Описание</label>
+                                    <input type="text" x-model="adminNewPlaceDesc" placeholder="Описание">
+                                </div>
+                                <div class="form-group" style="flex-direction: row; gap: 15px; margin-bottom: 20px;">
+                                    <div style="flex: 1; display: flex; flex-direction: column; gap: 8px;">
+                                        <label>Открытие</label>
+                                        <input type="text" x-model="adminNewPlaceOpen" placeholder="12:00" required>
+                                    </div>
+                                    <div style="flex: 1; display: flex; flex-direction: column; gap: 8px;">
+                                        <label>Закрытие</label>
+                                        <input type="text" x-model="adminNewPlaceClose" placeholder="23:00" required>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label>Изображение ресторана</label>
+                                    <input type="file" @change="handleImageUpload($event, 'place')" accept="image/*">
+                                    <template x-if="adminNewPlaceImagePath">
+                                        <div style="margin-top: 10px; display: flex; align-items: center; gap: 10px;">
+                                            <img :src="adminNewPlaceImagePath.startsWith('http') ? adminNewPlaceImagePath : 'http://localhost:8000' + adminNewPlaceImagePath" style="width: 80px; height: 50px; object-fit: cover; border-radius: 4px;">
+                                            <button type="button" class="btn btn-secondary btn-sm" @click="adminNewPlaceImagePath = ''" style="padding: 4px 8px; font-size: 11px;">Удалить</button>
+                                        </div>
+                                    </template>
+                                </div>
+                                <button type="submit" class="btn btn-primary btn-block">Добавить ресторан</button>
+                            </form>
+                        </div>
+                        <div class="table-map-panel" style="padding: 30px;">
+                            <h3>Список ресторанов</h3>
+                            <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
+                                <table class="manager-table">
+                                    <thead>
+                                        <tr>
+                                            <th>ID</th>
+                                            <th>Название</th>
+                                            <th>Город</th>
+                                            <th>Адрес</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <template x-for="place in foodPlaces" :key="place.id">
+                                            <tr>
+                                                <td x-text="place.id"></td>
+                                                <td x-text="place.name"></td>
+                                                <td x-text="getLocationNameById(place.location_id)"></td>
+                                                <td x-text="place.address"></td>
+                                            </tr>
+                                        </template>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SUB-TAB: MANAGERS -->
+                <div class="tab-pane" :class="{ 'active': adminTab === 'managers' }" x-show="adminTab === 'managers'">
+                    <div class="reservation-layout">
+                        <div class="reservation-form-panel">
+                            <h3>Назначить менеджеру рестораны</h3>
+                            <div class="form-group">
+                                <label>Менеджер</label>
+                                <select x-model="adminAssignManagerId" required>
+                                    <option value="" disabled selected>Выберите менеджера</option>
+                                    <template x-for="manager in adminManagers" :key="manager.id">
+                                        <option :value="manager.id" x-text="manager.name"></option>
+                                    </template>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Город</label>
+                                <select x-model="adminAssignCityId">
+                                    <option value="">Все города</option>
+                                    <template x-for="loc in locations" :key="loc.id">
+                                        <option :value="loc.id" x-text="loc.name"></option>
+                                    </template>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="table-map-panel" style="padding: 30px;">
+                            <h3 x-text="adminAssignManagerId ? 'Рестораны для ' + (adminManagers.find(m => m.id == adminAssignManagerId)?.name || '') : 'Выберите менеджера'"></h3>
+                            <template x-if="adminAssignManagerId">
+                                <div style="display: flex; flex-direction: column; gap: 12px;">
+                                    <template x-for="place in adminAssignFilteredPlaces()" :key="place.id">
+                                        <div @click="toggleManagerPlace(adminManagers.find(m => m.id == adminAssignManagerId), place.id)"
+                                             style="display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: 8px; border: 1px solid var(--border-color); cursor: pointer; transition: all 0.2s;"
+                                             :style="isManagerPlace(adminManagers.find(m => m.id == adminAssignManagerId), place.id) ? 'border-color: var(--accent-burgundy); background: rgba(139,0,0,0.08);' : ''">
+                                            <i class="fa-solid" :class="isManagerPlace(adminManagers.find(m => m.id == adminAssignManagerId), place.id) ? 'fa-square-check' : 'fa-square'"
+                                               :style="isManagerPlace(adminManagers.find(m => m.id == adminAssignManagerId), place.id) ? 'color: var(--accent-burgundy);' : 'color: var(--text-secondary);'"
+                                               style="font-size: 18px;"></i>
+                                            <div>
+                                                <div style="font-weight: 500;" x-text="place.name"></div>
+                                                <div style="font-size: 12px; color: var(--text-secondary);" x-text="locations.find(l => l.id == place.location_id)?.name || ''"></div>
+                                            </div>
+                                        </div>
+                                    </template>
+                                    <template x-if="adminAssignFilteredPlaces().length === 0">
+                                        <p style="color: var(--text-secondary); text-align: center;">Нет ресторанов</p>
+                                    </template>
+                                </div>
+                            </template>
+                        </div>
+                        <div class="table-map-panel" style="padding: 30px;">
+                            <h3>Текущие менеджеры</h3>
+                            <div class="table-responsive">
+                                <table class="manager-table">
+                                    <thead>
+                                        <tr>
+                                            <th>ID</th>
+                                            <th>Имя</th>
+                                            <th>Закрепленные рестораны</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <template x-for="manager in adminManagers" :key="manager.id">
+                                            <tr>
+                                                <td x-text="manager.id"></td>
+                                                <td x-text="manager.name"></td>
+                                                <td>
+                                                    <template x-if="manager.managed_place_ids && manager.managed_place_ids.length > 0">
+                                                        <span x-text="manager.managed_place_ids.map(id => getPlaceNameById(id)).join(', ')"></span>
+                                                    </template>
+                                                    <template x-if="!manager.managed_place_ids || manager.managed_place_ids.length === 0">
+                                                        <span style="color: var(--text-secondary);">Не назначен</span>
+                                                    </template>
+                                                </td>
+                                            </tr>
+                                        </template>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- AUTH MODAL -->
+    <div class="modal-overlay" :class="{ 'active': showAuthModal }">
+        <div class="modal-box">
+            <button class="modal-close" @click="showAuthModal = false">×</button>
+            <div class="modal-header">
+                <div class="auth-tabs">
+                    <button class="auth-tab-btn" :class="{ 'active': authMode === 'login' }" @click="switchAuthMode('login')">Войти</button>
+                    <button class="auth-tab-btn" :class="{ 'active': authMode === 'register' }" @click="switchAuthMode('register')">Регистрация</button>
+                </div>
+            </div>
+
+            <div class="modal-body">
+                <!-- Error Message Display -->
+                <template x-if="authError">
+                    <div class="auth-error">
+                        <i class="fa-solid fa-circle-exclamation"></i>
+                        <span x-text="authError"></span>
+                    </div>
+                </template>
+
+                <!-- Login Form -->
+                <form class="auth-form" :class="{ 'active': authMode === 'login' }" @submit.prevent="submitLogin()">
+                    <div class="form-group">
+                        <label>Логин</label>
+                        <input type="text" x-model="loginUsername" placeholder="Введите имя пользователя" required autocomplete="username">
+                    </div>
+                    <div class="form-group">
+                        <label>Пароль</label>
+                        <input type="password" x-model="loginPassword" placeholder="Введите пароль" required autocomplete="current-password">
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-block">Войти в профиль</button>
+                </form>
+
+                <!-- Register Form -->
+                <form class="auth-form" :class="{ 'active': authMode === 'register' }" @submit.prevent="submitRegister()">
+                    <div class="form-group">
+                        <label>Имя пользователя (Логин)</label>
+                        <input type="text" x-model="regUsername" placeholder="Минимум 3 символа" required autocomplete="username">
+                    </div>
+                    <div class="form-group">
+                        <label>Пароль</label>
+                        <input type="password" x-model="regPassword" placeholder="Минимум 8 символов" required autocomplete="new-password">
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-block">Зарегистрироваться</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- NOTIFICATION DIALOG -->
+    <div class="modal-overlay" :class="{ 'active': showSuccessModal }">
+        <div class="modal-box success-box">
+            <span class="success-icon"><i class="fa-solid fa-circle-check"></i></span>
+            <h2 x-text="successTitle">Успешно!</h2>
+            <p x-text="successMessage">Бронирование успешно оформлено.</p>
+            <button class="btn btn-primary" @click="showSuccessModal = false">Отлично</button>
+        </div>
+    </div>
+
+    <!-- TOAST NOTIFICATIONS -->
+    <div class="toast-container">
+        <template x-for="toast in toasts" :key="toast.id">
+            <div class="toast" :class="'toast-' + toast.type" x-transition:enter="toast-enter" x-transition:leave="toast-leave">
+                <i class="toast-icon" :class="{
+                    'fa-solid fa-circle-check': toast.type === 'success',
+                    'fa-solid fa-circle-exclamation': toast.type === 'error',
+                    'fa-solid fa-triangle-exclamation': toast.type === 'warning',
+                    'fa-solid fa-circle-info': toast.type === 'info'
+                }"></i>
+                <span class="toast-message" x-text="toast.message"></span>
+                <button class="toast-close" @click="removeToast(toast.id)">&times;</button>
+            </div>
+        </template>
+    </div>
+
+    <!-- CONFIRM MODAL -->
+    <div class="modal-overlay" id="confirmModal">
+        <div class="modal-box" style="max-width: 400px;">
+            <p id="confirmMessage" style="margin-bottom: 20px; font-size: 15px;"></p>
+            <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                <button class="btn btn-secondary" id="confirmCancelBtn">Отмена</button>
+                <button class="btn btn-primary" id="confirmOkBtn">Подтвердить</button>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 10000;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            pointer-events: none;
+        }
+        .toast {
+            pointer-events: all;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 14px 18px;
+            border-radius: 10px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            backdrop-filter: blur(16px);
+            color: var(--text-primary);
+            font-size: 14px;
+            min-width: 280px;
+            max-width: 420px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+            animation: toastSlideIn 0.3s ease-out;
+        }
+        .toast-success { border-left: 4px solid var(--accent-emerald); }
+        .toast-success .toast-icon { color: var(--accent-emerald); }
+        .toast-error { border-left: 4px solid var(--accent-red); }
+        .toast-error .toast-icon { color: var(--accent-red); }
+        .toast-warning { border-left: 4px solid var(--accent-amber); }
+        .toast-warning .toast-icon { color: var(--accent-amber); }
+        .toast-info { border-left: 4px solid var(--text-secondary); }
+        .toast-info .toast-icon { color: var(--text-secondary); }
+        .toast-icon { font-size: 18px; flex-shrink: 0; }
+        .toast-message { flex: 1; line-height: 1.4; }
+        .toast-close {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 20px;
+            cursor: pointer;
+            padding: 0 4px;
+            line-height: 1;
+            flex-shrink: 0;
+            transition: color 0.2s;
+        }
+        .toast-close:hover { color: var(--text-primary); }
+        @keyframes toastSlideIn {
+            from { opacity: 0; transform: translateX(40px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        /* LOADING OVERLAY */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #0f0a08;
+            z-index: 99999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .loading-spinner {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 24px;
+        }
+        .spinner-ring {
+            width: 48px;
+            height: 48px;
+            border: 3px solid rgba(122, 26, 41, 0.15);
+            border-top-color: var(--accent-burgundy);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        .spinner-text {
+            font-size: 22px;
+            font-weight: 700;
+            color: #f5ebe6;
+            letter-spacing: 1px;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .loading-fade-out {
+            animation: fadeOut 0.4s ease-out forwards;
+        }
+        @keyframes fadeOut {
+            from { opacity: 1; }
+            to { opacity: 0; pointer-events: none; }
+        }
+    </style>
+
+    <script type="module" src="js/main.js"></script>
+</body>
+</html>

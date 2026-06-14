@@ -10,8 +10,10 @@ router = APIRouter(prefix="/food_tables", tags=["FoodTables"])
 
 
 @router.get("")
-async def list_food_tables(session: db_dep):
+async def list_food_tables(session: db_dep, food_place_id: int | None = None):
     request = select(FoodTable)
+    if food_place_id is not None:
+        request = request.where(FoodTable.food_place_id == food_place_id)
     response = await session.execute(request)
     food_tables = [FoodTableSchema.model_validate(food_table) for food_table in response.scalars().all()]
     return food_tables
@@ -30,12 +32,12 @@ async def create_food_table(food_table_schema: CreateFoodTableSchema, session: d
                             is_authenticated: only_authenticated_dep):
     food_place = await session.get(FoodPlace, food_table_schema.food_place_id)
     if food_place is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="FoodPlace with this id not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ресторан с этим ID не найден")
     check_request = select(FoodTable).where(
         FoodTable.table_number == food_table_schema.table_number, FoodTable.food_place_id == food_table_schema.food_place_id)
     if (await session.execute(check_request)).scalar_one_or_none():
         raise HTTPException(status_code=status.HTTP_409_CONFLICT,
-                            detail="FoodTable with this name and food_place_id already exists")
+                            detail="Столик с таким номером уже существует в этом ресторане")
     food_table = FoodTable(**food_table_schema.model_dump())
     session.add(food_table)
     await session.commit()
@@ -48,12 +50,12 @@ async def update_food_table(food_table_id: int, food_table_schema: UpdateFoodTab
                             is_authenticated: only_authenticated_dep):
     food_table = await session.get(FoodTable, food_table_id)
     if food_table is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="FoodTable not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Столик не найден")
     check_request = select(FoodTable).where(
         FoodTable.table_number == food_table_schema.table_number, FoodTable.food_place_id == food_table.food_place_id)
     if (await session.execute(check_request)).scalar_one_or_none():
         raise HTTPException(status_code=status.HTTP_409_CONFLICT,
-                            detail="FoodTable with this name and food_place_id already exists")
+                            detail="Столик с таким номером уже существует в этом ресторане")
     for attr, value in food_table_schema.model_dump().items():
         setattr(food_table, attr, value)
     await session.commit()
@@ -65,7 +67,7 @@ async def update_food_table(food_table_id: int, food_table_schema: UpdateFoodTab
 async def delete_food_table(food_table_id: int, session: db_dep, is_authenticated: only_authenticated_dep):
     food_table = await session.get(FoodTable, food_table_id)
     if food_table is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="FoodTable not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Столик не найден")
     await session.delete(food_table)
     await session.commit()
-    return {"detail": "FoodTable deleted"}
+    return {"detail": "Столик успешно удален"}

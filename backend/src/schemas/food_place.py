@@ -8,8 +8,9 @@ from src.core.config import BaseSchema
 class UpdateFoodPlaceSchema(BaseSchema):
     name: str
     address: str
-    description: str
+    description: str | None = None
     location_id: int
+    image_path: str | None = None
 
 
 class CreateFoodPlaceSchema(UpdateFoodPlaceSchema):

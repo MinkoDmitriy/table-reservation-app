@@ -1,0 +1,141 @@
+/* RESTAURANTS GRID & DETAIL HERO STYLES */
+.restaurants-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 28px;
+}
+
+.restaurant-card {
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-lg);
+    overflow: hidden;
+    cursor: pointer;
+    transition: var(--transition-smooth);
+}
+
+.restaurant-card:hover {
+    transform: translateY(-6px);
+    border-color: rgba(212, 175, 55, 0.3);
+    box-shadow: 0 12px 24px rgba(0,0,0,0.5);
+}
+
+.card-img-wrapper {
+    height: 180px;
+    position: relative;
+}
+
+.card-img-wrapper img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.card-img-overlay {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    z-index: 2;
+}
+
+.restaurant-card-body {
+    padding: 20px;
+}
+
+.restaurant-card-body h4 {
+    font-size: 20px;
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+
+.restaurant-card-body .address {
+    color: var(--text-secondary);
+    font-size: 13px;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.card-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-top: 1px solid var(--border-color);
+    padding-top: 14px;
+    margin-top: 8px;
+}
+
+.card-rating {
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.card-time {
+    font-size: 13px;
+    color: var(--text-secondary);
+}
+
+/* RESTAURANT DETAILS VIEW (STEP 3) */
+.restaurant-hero-banner {
+    height: 280px;
+    position: relative;
+    display: flex;
+    align-items: flex-end;
+    background-size: cover;
+    background-position: center;
+}
+
+.banner-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(to top, var(--bg-main) 10%, rgba(14, 17, 23, 0.4));
+}
+
+.banner-content {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 30px 24px;
+    width: 100%;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.restaurant-meta-details {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    align-items: flex-start;
+}
+
+.restaurant-meta-details h2 {
+    font-size: 36px;
+    font-weight: 800;
+    margin: 0;
+}
+
+.restaurant-meta-details .address {
+    color: var(--text-secondary);
+    font-size: 15px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.restaurant-meta-details .rating {
+    font-size: 15px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.restaurant-meta-details .review-count {
+    color: var(--text-secondary);
+    font-weight: 400;
+}

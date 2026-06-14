@@ -49,3 +49,6 @@ class ReservationSchema(CreateReservationSchema):
     id: int
     user_id: int
     end_datetime: dt.datetime
+    user_name: str | None = None
+    table_number: str | None = None
+    max_seats: int | None = None

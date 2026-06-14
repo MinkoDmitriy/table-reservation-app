@@ -8,7 +8,7 @@ from src.core.config import settings
 
 engine = create_async_engine(settings.db_url)
 
-session_factory = async_sessionmaker(engine)
+session_factory = async_sessionmaker(engine, expire_on_commit=False)
 
 
 async def get_db():

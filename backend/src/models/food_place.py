@@ -6,8 +6,8 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.core.database import Base
 
-while TYPE_CHECKING:
-    from src.models import Location, FoodTable, FoodBasket, MenuItem
+if TYPE_CHECKING:
+    from src.models import Location, FoodTable, FoodBasket, MenuItem, Rating, User
 
 
 class FoodPlace(Base):
@@ -22,6 +22,7 @@ class FoodPlace(Base):
     description: Mapped[str] = mapped_column(nullable=True)
     open_time: Mapped[dt.time] = mapped_column(nullable=False)
     close_time: Mapped[dt.time] = mapped_column(nullable=False)
+    image_path: Mapped[str] = mapped_column(nullable=True)
     location_id: Mapped[int] = mapped_column(ForeignKey("locations.id", ondelete="CASCADE"), nullable=False)
     # Many To One
     location: Mapped["Location"] = relationship("Location", back_populates="food_places")
@@ -31,3 +32,8 @@ class FoodPlace(Base):
                                                        cascade="all, delete-orphan", passive_deletes=True)
     menu_items: Mapped[list["MenuItem"]] = relationship("MenuItem", back_populates="food_place",
                                                         cascade="all, delete-orphan", passive_deletes=True)
+    ratings: Mapped[list["Rating"]] = relationship("Rating", back_populates="food_place",
+                                                    cascade="all, delete-orphan", passive_deletes=True)
+    managers: Mapped[list["User"]] = relationship(
+        "User", secondary="restaurant_managers", back_populates="managed_places"
+    )

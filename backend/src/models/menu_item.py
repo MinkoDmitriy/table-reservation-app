@@ -5,7 +5,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.core.database import Base
 
-while TYPE_CHECKING:
+if TYPE_CHECKING:
     from src.models import FoodPlace, BasketItem
 
 
@@ -19,6 +19,7 @@ class MenuItem(Base):
     name: Mapped[str] = mapped_column(nullable=False)
     price: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False)
     description: Mapped[str | None] = mapped_column(nullable=True)
+    image_path: Mapped[str] = mapped_column(nullable=True)
     food_place_id: Mapped[int] = mapped_column(ForeignKey("food_places.id", ondelete="CASCADE"), nullable=False)
 
     food_place: Mapped["FoodPlace"] = relationship("FoodPlace", back_populates="menu_items")

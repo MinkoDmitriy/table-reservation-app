@@ -10,6 +10,7 @@ class CreateMenuItemSchema(BaseSchema):
     description: Annotated[str | None, Field(default=None)]
     food_place_id: int
     price: Annotated[Decimal, Field(gt=0, decimal_places=2)]
+    image_path: str | None = None
 
 
 class MenuItemSchema(CreateMenuItemSchema):

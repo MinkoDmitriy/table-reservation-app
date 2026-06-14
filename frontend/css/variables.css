@@ -1,0 +1,25 @@
+/* BASE DESIGN TOKENS & VARIABLES */
+:root {
+    --bg-main: #140f0c;
+    --bg-card: rgba(29, 21, 18, 0.75);
+    --bg-input: #261d19;
+    --border-color: rgba(148, 38, 54, 0.18); /* Burgundy tinted borders */
+    
+    --text-primary: #f5ebe6;
+    --text-secondary: #a89a94;
+    
+    --accent-amber: #b52a3a; /* Bright Burgundy highlight (replaces Ochre) */
+    --accent-amber-hover: #d13d4f; /* Bright Burgundy hover */
+    --accent-burgundy: #7a1a29; /* Deep Burgundy primary */
+    --accent-burgundy-hover: #942636; /* Burgundy hover */
+    --accent-emerald: #2e7d32; /* Deep green */
+    --accent-emerald-hover: #388e3c;
+    --accent-red: #c62828; /* Deep red */
+    
+    --blur-strength: 12px;
+    --border-radius-lg: 16px;
+    --border-radius-md: 10px;
+    --border-radius-sm: 6px;
+    
+    --transition-smooth: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+}

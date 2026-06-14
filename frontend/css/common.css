@@ -1,0 +1,401 @@
+/* COMMON & BASE STYLES */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    background-color: var(--bg-main);
+    color: var(--text-primary);
+    font-family: 'Inter', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow-x: hidden;
+}
+
+/* SCROLLBAR STYLING */
+::-webkit-scrollbar {
+    width: 8px;
+}
+::-webkit-scrollbar-track {
+    background: var(--bg-main);
+}
+::-webkit-scrollbar-thumb {
+    background: var(--bg-input);
+    border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: var(--text-secondary);
+}
+
+/* BUTTONS */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px 20px;
+    border-radius: var(--border-radius-md);
+    border: none;
+    cursor: pointer;
+    font-family: inherit;
+    font-weight: 700;
+    font-size: 14px;
+    transition: var(--transition-smooth);
+}
+
+.btn-primary {
+    background-color: var(--accent-burgundy);
+    color: #f5ebe6;
+}
+
+.btn-primary:hover {
+    background-color: var(--accent-burgundy-hover);
+    box-shadow: 0 4px 15px rgba(122, 26, 41, 0.4);
+    transform: translateY(-2px);
+}
+
+.btn-primary:disabled {
+    background-color: var(--text-secondary);
+    cursor: not-allowed;
+    box-shadow: none;
+    transform: none;
+}
+
+.btn-secondary {
+    background-color: transparent;
+    border: 1px solid var(--accent-amber);
+    color: var(--accent-amber);
+}
+
+.btn-secondary:hover {
+    background-color: rgba(212, 175, 55, 0.1);
+    color: var(--accent-amber-hover);
+}
+
+.btn-block {
+    display: flex;
+    width: 100%;
+    margin-top: 15px;
+    padding: 14px;
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.btn-back {
+    background: transparent;
+    border: 1px solid var(--accent-burgundy);
+    color: var(--accent-burgundy);
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    border-radius: var(--border-radius-md);
+    width: auto;
+    align-self: flex-start;
+    transition: var(--transition-smooth);
+}
+
+.btn-back:hover {
+    background-color: rgba(122, 26, 41, 0.1);
+    color: var(--accent-burgundy-hover);
+}
+
+.btn-back.light {
+    color: #fff;
+    background: rgba(122, 26, 41, 0.6);
+    border: 1px solid var(--accent-burgundy);
+    padding: 10px 20px;
+    border-radius: var(--border-radius-md);
+    backdrop-filter: blur(4px);
+}
+
+.btn-back.light:hover {
+    background: var(--accent-burgundy);
+    border-color: var(--accent-burgundy);
+}
+
+/* BADGES */
+.badge {
+    background-color: rgba(212, 175, 55, 0.15);
+    color: var(--accent-amber);
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    display: inline-block;
+}
+
+/* APP HEADER */
+.app-header {
+    background-color: rgba(20, 15, 12, 0.85);
+    backdrop-filter: blur(var(--blur-strength));
+    -webkit-backdrop-filter: blur(var(--blur-strength));
+    border-bottom: 1px solid var(--border-color);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    width: 100%;
+}
+
+.header-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 16px 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.logo {
+    font-size: 24px;
+    font-weight: 800;
+    cursor: pointer;
+    letter-spacing: -0.5px;
+    color: #c4334b; /* Crimson/Burgundy */
+}
+
+.logo-accent {
+    color: #9e2235; /* Deep burgundy accent */
+}
+
+.header-controls {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.city-selector {
+    display: flex;
+    align-items: center;
+    background-color: var(--bg-input);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-md);
+    padding: 4px 12px;
+}
+
+.city-selector select {
+    background: transparent;
+    border: none;
+    color: var(--text-primary);
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 700;
+    outline: none;
+    cursor: pointer;
+    padding: 6px 4px;
+}
+
+/* MAIN VIEWPORTS */
+.main-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.view-section {
+    display: none;
+    opacity: 0;
+    transition: opacity 0.4s ease;
+}
+
+.view-section.active {
+    display: block;
+    opacity: 1;
+}
+
+/* HERO SECTION (STEP 1) */
+.hero-section {
+    padding: 80px 24px;
+    text-align: center;
+    max-width: 1200px;
+    margin: 0 auto;
+    width: 100%;
+}
+
+.hero-section h1 {
+    font-size: 48px;
+    font-weight: 700;
+    margin-bottom: 16px;
+    background: linear-gradient(135deg, #fff, var(--text-secondary));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.hero-section p {
+    color: var(--text-secondary);
+    font-size: 18px;
+    max-width: 600px;
+    margin: 0 auto 50px auto;
+    line-height: 1.6;
+}
+
+.city-cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 24px;
+    margin-top: 40px;
+}
+
+.city-card {
+    height: 150px;
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-lg);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+    cursor: pointer;
+    overflow: hidden;
+    transition: var(--transition-smooth);
+}
+
+.city-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, rgba(122, 26, 41, 0.2), transparent);
+    opacity: 0;
+    transition: var(--transition-smooth);
+    z-index: 1;
+}
+
+.city-card:hover {
+    transform: translateY(-8px);
+    border-color: rgba(122, 26, 41, 0.5);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
+}
+
+.city-card:hover::before {
+    opacity: 1;
+}
+
+.city-card h3 {
+    font-size: 22px;
+    font-weight: 600;
+    margin-bottom: 8px;
+    z-index: 2;
+}
+
+.city-card .restaurant-count {
+    color: var(--text-secondary);
+    font-size: 13px;
+    z-index: 2;
+}
+
+/* COMMON CONTAINER */
+.section-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 40px 24px;
+    width: 100%;
+}
+
+.section-header {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 30px;
+    align-items: flex-start;
+}
+
+.section-title {
+    font-size: 28px;
+    font-weight: 600;
+}
+
+/* HAMBURGER MENU */
+.hamburger-wrapper {
+    position: relative;
+}
+
+.hamburger-btn {
+    padding: 10px 14px !important;
+    font-size: 18px !important;
+}
+
+.hamburger-dropdown {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-md);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    min-width: 200px;
+    z-index: 1000;
+    overflow: hidden;
+}
+
+.hamburger-user-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 16px;
+    font-weight: 600;
+    color: var(--text-primary);
+    font-size: 14px;
+    transition: background 0.2s;
+}
+
+.hamburger-user-info:hover {
+    background: rgba(212, 175, 55, 0.1);
+}
+
+.hamburger-user-info i {
+    font-size: 20px;
+    color: var(--accent-amber);
+}
+
+.hamburger-divider {
+    height: 1px;
+    background: var(--border-color);
+    margin: 0;
+}
+
+.hamburger-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 12px 16px;
+    background: none;
+    border: none;
+    color: var(--text-primary);
+    font-family: inherit;
+    font-size: 14px;
+    cursor: pointer;
+    text-align: left;
+    transition: background 0.2s;
+}
+
+.hamburger-item:hover {
+    background: rgba(212, 175, 55, 0.1);
+}
+
+.hamburger-item i {
+    width: 18px;
+    text-align: center;
+    color: var(--accent-amber);
+}
+
+.hamburger-logout {
+    color: var(--accent-red);
+}
+
+.hamburger-logout i {
+    color: var(--accent-red);
+}

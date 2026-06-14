@@ -9,8 +9,5 @@ class CreateBasketItemSchema(BaseSchema):
 
 class BasketItemSchema(CreateBasketItemSchema):
     id: int
-
-
-class ItemSchema():
-    menu_item: MenuItemSchema
-
+    item_quantity: int = 1
+    menu_item: MenuItemSchema | None = None

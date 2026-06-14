@@ -17,6 +17,14 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
 
+    STORAGE_TYPE: str = "local"
+    S3_ACCESS_KEY: str | None = None
+    S3_SECRET_KEY: str | None = None
+    S3_BUCKET_NAME: str | None = None
+    S3_ENDPOINT_URL: str | None = None
+    S3_PUBLIC_URL: str | None = None
+    S3_REGION: str | None = "us-east-1"
+
     @property
     def db_url(self):
         return f"postgresql+asyncpg://{self.DB_USER}:{self.DB_PASS}@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"

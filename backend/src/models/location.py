@@ -4,7 +4,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.core.database import Base
 
-while TYPE_CHECKING:
+if TYPE_CHECKING:
     from src.models import FoodPlace
 
 

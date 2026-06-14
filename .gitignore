@@ -1,2 +1,27 @@
-.idea
+# Virtual environment
+.venv/
+env/
+venv/
+ENV/
+
+# Python cache
+**/__pycache__/
+*.py[cod]
+*$py.class
+
+# IDE configurations
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+
+# Sensitive files
 .env
+id_ed25519_minkodmitriy
+id_ed25519_minkodmitriy.pub
+
+# OS specific files
+.DS_Store

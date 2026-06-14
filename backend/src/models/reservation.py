@@ -7,13 +7,13 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship, selectinload
 
 from src.core.database import Base
 
-while TYPE_CHECKING:
+if TYPE_CHECKING:
     from src.models import FoodTable, User
 
 
 class Reservation(Base):
     __tablename__ = "reservations"
-    __table__args__ = (
+    __table_args__ = (
         CheckConstraint("30 <= duration_in_minutes and duration_in_minutes <= 240", name="check_duration_range"),
     )
 
@@ -25,6 +25,18 @@ class Reservation(Base):
 
     user: Mapped["User"] = relationship("User", back_populates="reservations")
     food_table: Mapped["FoodTable"] = relationship("FoodTable", back_populates="reservations")
+
+    @property
+    def user_name(self) -> str | None:
+        return self.user.name if self.user else None
+
+    @property
+    def table_number(self) -> str | None:
+        return self.food_table.table_number if self.food_table else None
+
+    @property
+    def max_seats(self) -> int | None:
+        return self.food_table.max_seats if self.food_table else None
 
     @property
     def end_datetime(self) -> dt.datetime:
