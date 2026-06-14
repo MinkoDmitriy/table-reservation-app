@@ -10,6 +10,20 @@
 
 ## Быстрый старт
 
+### Установка зависимостей (macOS)
+
+```bash
+# Homebrew (если ещё не установлен)
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
+# Make
+brew install make
+```
+
+Docker и Docker Desktop: https://docs.docker.com/desktop/install/
+
+### Запуск
+
 ```bash
 # 1. Скопировать .env
 cp .env.example .env
@@ -17,8 +31,8 @@ cp .env.example .env
 # 2. Поднять всё
 make up
 
-# 3. Применить миграции
-make migrate
+# 3. Восстановить БД из дампа (или применить миграции для чистой БД)
+make db-reset
 
 # 4. Открыть
 # Frontend: http://localhost:3000
