@@ -1,4 +1,4 @@
-.PHONY: up down restart ps logs migrate migration db-dump db-reset clean
+.PHONY: up down restart ps logs migrate migration db-dump db-reset db-shell clean
 
 # Start all services in the background and build/rebuild container images
 up:
@@ -53,6 +53,9 @@ db-reset:
 	docker compose exec -T db psql -U postgres -d table_reservation < dumps/dump.sql
 	docker compose start backend
 	@echo "Database restored from dumps/dump.sql"
+
+db-shell: ## Enter Postgres shell
+	docker compose exec db psql -U postgres -d table_reservation
 
 # Stop containers and completely wipe database and MinIO volumes (Factory Reset)
 clean:

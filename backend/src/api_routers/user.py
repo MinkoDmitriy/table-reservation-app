@@ -161,7 +161,8 @@ async def change_user_role(target_user_id: int, schema: ChangeRoleSchema, sessio
 
 @router.put("/{target_user_id}/managed_places", dependencies=[requires("admin:all")])
 async def assign_managed_places(target_user_id: int, schema: AssignManagerSchema, session: db_dep):
-    user = await session.get(User, target_user_id)
+    stmt = select(User).options(selectinload(User.managed_places)).where(User.id == target_user_id)
+    user = (await session.execute(stmt)).scalar_one_or_none()
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Пользователь не найден")
 

@@ -5,6 +5,8 @@ export const bookingState = {
     resGuests: 2,
     resComments: '',
     resPhone: '',
+    bookingView: 'visual',
+
 
     // DATA FETCHING FOR BOOKING
     async fetchTables(placeId) {

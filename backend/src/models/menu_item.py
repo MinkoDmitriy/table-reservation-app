@@ -20,6 +20,7 @@ class MenuItem(Base):
     price: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False)
     description: Mapped[str | None] = mapped_column(nullable=True)
     image_path: Mapped[str] = mapped_column(nullable=True)
+    is_active: Mapped[bool] = mapped_column(default=True, server_default="true", nullable=False)
     food_place_id: Mapped[int] = mapped_column(ForeignKey("food_places.id", ondelete="CASCADE"), nullable=False)
 
     food_place: Mapped["FoodPlace"] = relationship("FoodPlace", back_populates="menu_items")

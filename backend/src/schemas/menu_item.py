@@ -15,3 +15,4 @@ class CreateMenuItemSchema(BaseSchema):
 
 class MenuItemSchema(CreateMenuItemSchema):
     id: int
+    is_active: bool = True

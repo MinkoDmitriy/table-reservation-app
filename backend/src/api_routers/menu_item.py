@@ -13,14 +13,14 @@ router = APIRouter(prefix="/menu_items", tags=["MenuItem"])
 
 @router.get("")
 async def list_menu_items(session: db_dep) -> list[MenuItemSchema]:
-    menu_items = await session.scalars(select(MenuItem))
+    menu_items = await session.scalars(select(MenuItem).where(MenuItem.is_active == True))
     return [MenuItemSchema.model_validate(menu_item) for menu_item in menu_items]
 
 
 @router.get("/{item_id}")
 async def get_menu_item(item_id: int, session: db_dep) -> MenuItemSchema:
     menu_item = await session.get(MenuItem, item_id)
-    if not menu_item:
+    if not menu_item or not menu_item.is_active:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Блюдо не найдено")
     return MenuItemSchema.model_validate(menu_item)
 
@@ -40,9 +40,9 @@ async def create_menu_item(menu_item_schema: CreateMenuItemSchema, session: db_d
 @router.delete("/{item_id}", dependencies=[requires("menu:write")])
 async def delete_menu_item(item_id: int, session: db_dep):
     menu_item = await session.get(MenuItem, item_id)
-    if not menu_item:
+    if not menu_item or not menu_item.is_active:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Блюдо не найдено")
-    session.delete(menu_item)
+    menu_item.is_active = False
     await session.commit()
     return {"detail": "Блюдо успешно удалено"}
 
@@ -50,7 +50,7 @@ async def delete_menu_item(item_id: int, session: db_dep):
 @router.post("/{item_id}/food_baskets")
 async def add_menu_item_to_food_basket(item_id: int, session: db_dep, user_id: actual_user_id_dep) -> BasketItemSchema:
     menu_item = await session.get(MenuItem, item_id)
-    if not menu_item:
+    if not menu_item or not menu_item.is_active:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Блюдо не найдено")
     
     food_basket_stmt = select(FoodBasket).options(selectinload(FoodBasket.basket_items)).where(

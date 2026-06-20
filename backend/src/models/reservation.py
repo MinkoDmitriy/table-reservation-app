@@ -39,6 +39,10 @@ class Reservation(Base):
         return self.food_table.max_seats if self.food_table else None
 
     @property
+    def food_place_id(self) -> int | None:
+        return self.food_table.food_place_id if self.food_table else None
+
+    @property
     def end_datetime(self) -> dt.datetime:
         return self.start_datetime + dt.timedelta(minutes=self.duration_in_minutes)
 

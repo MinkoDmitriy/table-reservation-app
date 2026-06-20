@@ -87,7 +87,8 @@ async def order_basket(basket_id: int, order_data: FinalizeOrderSchema, session:
     food_basket.mark_ordered(
         order_type=order_data.order_type,
         phone=order_data.phone,
-        address=order_data.address
+        address=order_data.address,
+        delivery_time=order_data.delivery_time
     )
     await session.commit()
     return {"detail": "FoodBasket ordered"}

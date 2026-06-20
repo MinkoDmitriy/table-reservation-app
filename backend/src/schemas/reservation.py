@@ -52,3 +52,4 @@ class ReservationSchema(CreateReservationSchema):
     user_name: str | None = None
     table_number: str | None = None
     max_seats: int | None = None
+    food_place_id: int | None = None

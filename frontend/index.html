@@ -56,7 +56,7 @@
                                     <i class="fa-solid fa-screwdriver-wrench"></i> Панель админа
                                 </button>
                                 <button class="hamburger-item" x-show="isAdmin || isManager" @click="goToManagerPanel(); closeUserMenu();">
-                                    <i class="fa-solid fa-list-check"></i> Управление заказами
+                                    <i class="fa-solid fa-list-check"></i> Управление ресторанами
                                 </button>
                                 <button class="hamburger-item" x-show="!isManager && !isAdmin" @click="goToHistory(); closeUserMenu();">
                                     <i class="fa-solid fa-clock-rotate-left"></i> Мои заказы
@@ -234,18 +234,89 @@
                         </div>
 
                         <div class="table-map-panel">
-                            <h3>Выберите столик</h3>
-                            <p class="map-hint">Доступные столики для бронирования</p>
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                <h3 style="margin: 0;">Выберите столик</h3>
+                                <div style="display: flex; gap: 4px; background: var(--bg-input); padding: 3px; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color);">
+                                    <button type="button" 
+                                            class="btn btn-sm" 
+                                            :class="bookingView === 'visual' ? 'btn-primary' : 'btn-secondary'" 
+                                            @click="bookingView = 'visual'" 
+                                            style="padding: 4px 10px; font-size: 11px; border-radius: var(--border-radius-sm); cursor: pointer; transition: all 0.2s;">
+                                        Схема
+                                    </button>
+                                    <button type="button" 
+                                            class="btn btn-sm" 
+                                            :class="bookingView === 'list' ? 'btn-primary' : 'btn-secondary'" 
+                                            @click="bookingView = 'list'" 
+                                            style="padding: 4px 10px; font-size: 11px; border-radius: var(--border-radius-sm); cursor: pointer; transition: all 0.2s;">
+                                        Список
+                                    </button>
+                                </div>
+                            </div>
+                            <p class="map-hint" x-text="bookingView === 'visual' ? 'Схема расположения столиков' : 'Список доступных столиков'"></p>
                             
-                            <div class="table-list">
+                            <!-- VIEW 1: Visual schema -->
+                            <div x-show="bookingView === 'visual'" style="background: rgba(0,0,0,0.15); border: 1px solid var(--border-color); border-radius: var(--border-radius-md); padding: 20px; display: flex; flex-direction: column; gap: 16px;">
+                                
+                                <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(85px, 1fr)); gap: 16px; justify-items: center; align-items: center; padding: 10px 0;">
+                                    <template x-for="table in foodTables" :key="table.id">
+                                        <div class="visual-table"
+                                             role="button"
+                                             tabindex="0"
+                                             :class="{
+                                                 'occupied': occupiedTableIds.includes(table.id),
+                                                 'selected': selectedTableId === table.id,
+                                                 'available': !occupiedTableIds.includes(table.id) && selectedTableId !== table.id
+                                             }"
+                                             @click="!occupiedTableIds.includes(table.id) && selectTable(table)"
+                                             @keydown.enter.prevent="!occupiedTableIds.includes(table.id) && selectTable(table)"
+                                             @keydown.space.prevent="!occupiedTableIds.includes(table.id) && selectTable(table)"
+                                             style="position: relative; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: var(--transition-smooth); width: 75px; height: 75px; border-radius: 12px;">
+                                             <span style="font-weight: 700; font-size: 13px;" x-text="'№' + table.table_number"></span>
+                                             <span style="font-size: 10px; opacity: 0.8; margin-top: 2px;" x-text="table.max_seats + ' мест'"></span>
+                                             
+                                             <div style="position: absolute; bottom: -8px; padding: 1px 5px; border-radius: 8px; font-size: 8px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;"
+                                                  :style="
+                                                      occupiedTableIds.includes(table.id) ? 'background: rgba(198,40,40,0.15); color: #ff8a8a; border: 1px solid rgba(198,40,40,0.3);' : 
+                                                      (selectedTableId === table.id ? 'background: rgba(212,175,55,0.2); color: #ffd073; border: 1px solid rgba(212,175,55,0.4);' : 
+                                                      'background: rgba(46,204,113,0.15); color: #8aff8a; border: 1px solid rgba(46,204,113,0.3);')
+                                                  "
+                                                  x-text="occupiedTableIds.includes(table.id) ? 'Занят' : (selectedTableId === table.id ? 'Выбран' : 'Свободен')">
+                                             </div>
+                                        </div>
+                                    </template>
+                                </div>
+                                
+                                <div style="display: flex; gap: 14px; justify-content: center; margin-top: 8px; border-top: 1px dashed rgba(255,255,255,0.05); padding-top: 10px;">
+                                    <div style="display: flex; align-items: center; gap: 6px;">
+                                        <div style="width: 10px; height: 10px; border-radius: 50%; background: rgba(46,204,113,0.15); border: 1px solid rgba(46,204,113,0.5);"></div>
+                                        <span style="font-size: 10px; color: var(--text-secondary);">Свободен</span>
+                                    </div>
+                                    <div style="display: flex; align-items: center; gap: 6px;">
+                                        <div style="width: 10px; height: 10px; border-radius: 50%; background: rgba(198,40,40,0.15); border: 1px solid rgba(198,40,40,0.5);"></div>
+                                        <span style="font-size: 10px; color: var(--text-secondary);">Занят</span>
+                                    </div>
+                                    <div style="display: flex; align-items: center; gap: 6px;">
+                                        <div style="width: 10px; height: 10px; border-radius: 50%; background: rgba(212,175,55,0.2); border: 1px solid rgba(212,175,55,0.6);"></div>
+                                        <span style="font-size: 10px; color: var(--text-secondary);">Выбран</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- VIEW 2: Traditional list -->
+                            <div x-show="bookingView === 'list'" class="table-list">
                                 <template x-for="table in foodTables" :key="table.id">
                                     <div class="table-list-item"
+                                         role="button"
+                                         tabindex="0"
                                          :class="{
                                              'occupied': occupiedTableIds.includes(table.id),
                                              'selected': selectedTableId === table.id,
                                              'available': !occupiedTableIds.includes(table.id) && selectedTableId !== table.id
                                          }"
-                                         @click="!occupiedTableIds.includes(table.id) && selectTable(table)">
+                                         @click="!occupiedTableIds.includes(table.id) && selectTable(table)"
+                                         @keydown.enter.prevent="!occupiedTableIds.includes(table.id) && selectTable(table)"
+                                         @keydown.space.prevent="!occupiedTableIds.includes(table.id) && selectTable(table)">
                                         <div class="table-list-info">
                                             <span class="table-list-number" x-text="'Стол ' + table.table_number"></span>
                                             <span class="table-list-seats" x-text="table.max_seats + ' гостей'"></span>
@@ -342,12 +413,22 @@
                                     </div>
 
                                     <div class="form-group">
-                                        <label>Подать к указанному времени</label>
-                                        <select x-model="orderType" required>
-                                            <option value="dinein">К моменту прибытия</option>
-                                            <option value="delivery">Доставка курьером</option>
-                                        </select>
+                                         <label>Способ получения</label>
+                                         <select x-model="orderType" required>
+                                             <option value="dinein">В ресторане к прибытию</option>
+                                             <option value="delivery">Доставка курьером</option>
+                                         </select>
                                     </div>
+
+                                    <div class="form-group">
+                                         <label>Время доставки / подачи (обязательно)</label>
+                                         <select x-model="orderDeliveryTime" required style="padding: 10px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-card); color: var(--text-primary); width: 100%;">
+                                             <option value="" disabled selected>Выберите время</option>
+                                             <template x-for="timeSlot in getPlaceTimeSlots(activeBasket?.food_place_id)" :key="timeSlot">
+                                                 <option :value="timeSlot" x-text="timeSlot"></option>
+                                             </template>
+                                         </select>
+                                     </div>
 
                                     <div class="form-group" x-show="orderType === 'delivery'">
                                         <label>Адрес доставки (обязательно)</label>
@@ -445,25 +526,16 @@
             <div class="section-container">
                     <div class="section-header">
                         <button class="btn-back" @click="goToHome()"><i class="fa-solid fa-arrow-left"></i> На главную</button>
-                        <h2 class="section-title">Кабинет менеджера</h2>
+                        <h2 class="section-title">Управление ресторанами</h2>
                     </div>
                     <div style="display: flex; gap: 12px; align-items: center; margin-bottom: 20px; flex-wrap: wrap;">
                         <div style="display: flex; align-items: center; gap: 8px;">
                             <label style="font-weight: 500; white-space: nowrap;">Город:</label>
                             <select x-model.number="managerSelectedCityId"
-                                    @change="managerSelectedPlaceId = managerFilteredPlaceIds()[0] || null; refreshManagerData()"
+                                    @change="managerSelectedPlaceIds = managerFilteredPlaceIds(); managerSelectedMenuPlaceId = managerFilteredPlaceIds()[0] || null; refreshManagerData(); if (managerSelectedMenuPlaceId) { fetchMenuItems(managerSelectedMenuPlaceId); }"
                                     style="padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-card); color: var(--text-primary);">
                                 <template x-for="city in managerCities()" :key="city.id">
                                     <option :value="city.id" x-text="city.name"></option>
-                                </template>
-                            </select>
-                        </div>
-                        <div style="display: flex; align-items: center; gap: 8px;">
-                            <label style="font-weight: 500; white-space: nowrap;">Ресторан:</label>
-                            <select x-model.number="managerSelectedPlaceId" @change="refreshManagerData()"
-                                    style="padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-card); color: var(--text-primary);">
-                                <template x-for="placeId in managerFilteredPlaceIds()" :key="placeId">
-                                    <option :value="placeId" x-text="getPlaceNameById(placeId)"></option>
                                 </template>
                             </select>
                         </div>
@@ -474,16 +546,31 @@
                     <button class="tab-btn" :class="{ 'active': managerTab === 'orders' }" @click="managerTab = 'orders'">
                         <span class="icon"><i class="fa-solid fa-list-check"></i></span> Заказы и Брони
                     </button>
-                    <button class="tab-btn" :class="{ 'active': managerTab === 'menu' }" @click="managerTab = 'menu'">
+                    <button class="tab-btn" :class="{ 'active': managerTab === 'menu' }" @click="managerTab = 'menu'; if (!managerSelectedMenuPlaceId && managerFilteredPlaceIds().length > 0) { managerSelectedMenuPlaceId = managerFilteredPlaceIds()[0]; } fetchMenuItems(managerSelectedMenuPlaceId);">
                         <span class="icon"><i class="fa-solid fa-utensils"></i></span> Меню ресторана
                     </button>
                 </div>
                 
                 <!-- SUB-TAB: ORDERS -->
                 <div class="tab-pane" :class="{ 'active': managerTab === 'orders' }" x-show="managerTab === 'orders'">
-                    <div class="manager-layout">
-                        <!-- Stats Grid -->
-                        <div class="manager-stats-grid">
+                    <!-- Multi-select Places Filter -->
+                    <div style="margin-bottom: 24px; background: var(--bg-secondary); padding: 16px 20px; border-radius: 12px; border: 1px solid var(--border-color);">
+                        <label style="font-weight: 600; display: block; margin-bottom: 12px; color: var(--text-primary);">Фильтр ресторанов (мультивыбор):</label>
+                        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                            <template x-for="placeId in managerFilteredPlaceIds()" :key="placeId">
+                                <button type="button" 
+                                        class="btn btn-sm"
+                                        :class="managerSelectedPlaceIds.includes(placeId) ? 'btn-primary' : 'btn-secondary'"
+                                        @click="toggleSelectedPlace(placeId)"
+                                        style="padding: 6px 12px; font-size: 13px; border-radius: 20px; border: 1px solid var(--border-color); cursor: pointer; transition: all 0.2s;"
+                                        x-text="getPlaceNameById(placeId)">
+                                </button>
+                            </template>
+                        </div>
+                    </div>
+
+                    <!-- Stats Cards -->
+                    <div class="manager-stats-grid">
                             <div class="stats-card">
                                 <span class="stats-label">ВСЕГО ЗАКАЗОВ</span>
                                 <span class="stats-value" x-text="totalOrders"></span>
@@ -506,7 +593,8 @@
                                     <table class="manager-table">
                                         <thead>
                                             <tr>
-                                                <th>ID</th>
+                                                <th @click="toggleSort('id')" style="cursor: pointer; user-select: none; white-space: nowrap;">ID <span x-show="managerSortField === 'id'" x-text="managerSortOrder === 'asc' ? '▲' : '▼'"></span></th>
+                                                <th @click="toggleSort('time')" style="cursor: pointer; user-select: none; white-space: nowrap;">ВРЕМЯ ЗАКАЗА / ВИЗИТА <span x-show="managerSortField === 'time'" x-text="managerSortOrder === 'asc' ? '▲' : '▼'"></span></th>
                                                 <th>ТИП</th>
                                                 <th>КЛИЕНТ / ТЕЛЕФОН</th>
                                                 <th>ДЕТАЛИ / АДРЕС</th>
@@ -520,7 +608,9 @@
                                                 <tr>
                                                     <td>
                                                         <div x-text="order.display_id" style="font-weight: 700; color: var(--text-primary);"></div>
-                                                        <div x-text="order.time_only" style="font-size: 12px; color: var(--text-secondary); margin-top: 4px;"></div>
+                                                    </td>
+                                                    <td>
+                                                        <div x-text="order.time_display" style="font-weight: 600; color: var(--text-primary); font-size: 13px; white-space: nowrap;"></div>
                                                     </td>
                                                     <td>
                                                         <span class="status-badge" :class="{
@@ -563,7 +653,18 @@
                 
                 <!-- SUB-TAB: MENU MANAGEMENT -->
                 <div class="tab-pane" :class="{ 'active': managerTab === 'menu' }" x-show="managerTab === 'menu'">
-                    <div class="reservation-layout">
+                    <!-- Single Place Selector for Menu -->
+                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 24px; background: var(--bg-secondary); padding: 12px 20px; border-radius: 12px; border: 1px solid var(--border-color); width: 100%;">
+                        <label style="font-weight: 600; white-space: nowrap; color: var(--text-primary);">Ресторан для управления меню:</label>
+                        <select x-model.number="managerSelectedMenuPlaceId" @change="fetchMenuItems(managerSelectedMenuPlaceId)"
+                                style="padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-card); color: var(--text-primary); min-width: 250px;">
+                            <template x-for="placeId in managerFilteredPlaceIds()" :key="placeId">
+                                <option :value="placeId" x-text="getPlaceNameById(placeId)"></option>
+                            </template>
+                        </select>
+                    </div>
+
+                    <div class="menu-manager-layout">
                         <!-- Left Panel: Add Menu Item Form -->
                         <div class="reservation-form-panel">
                             <h3>Добавить новое блюдо</h3>
@@ -598,32 +699,29 @@
                         <div class="table-map-panel" style="padding: 30px;">
                             <h3>Текущие позиции меню</h3>
                             <p class="map-hint">Список блюд, предлагаемых в этом ресторане</p>
-                            <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
-                                <table class="manager-table">
-                                    <thead>
-                                        <tr>
-                                            <th>Блюдо</th>
-                                            <th>Цена</th>
-                                            <th>Действие</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <template x-for="item in menuItems" :key="item.id">
-                                            <tr>
-                                                <td>
-                                                    <div style="font-weight: 600; color: var(--text-primary);" x-text="item.name"></div>
-                                                    <div style="font-size: 12px; color: var(--text-secondary); margin-top: 4px;" x-text="item.description"></div>
-                                                </td>
-                                                <td style="font-weight: 700; color: var(--accent-amber);" x-text="item.price + ' ₽'"></td>
-                                                <td>
-                                                    <button class="btn btn-secondary btn-sm" @click="deleteMenuItem(item.id)" style="padding: 4px 8px; font-size: 11px;">
-                                                        <i class="fa-solid fa-trash"></i> Удалить
-                                                    </button>
-                                                </td>
-                                            </tr>
-                                        </template>
-                                    </tbody>
-                                </table>
+                            <div style="max-height: 420px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; padding-right: 8px;">
+                                <template x-for="item in menuItems" :key="item.id">
+                                    <div class="menu-item-row-hover" style="display: flex; align-items: center; justify-content: space-between; background: rgba(255,255,255,0.015); border: 1px solid var(--border-color); padding: 14px 16px; border-radius: var(--border-radius-md); transition: var(--transition-smooth); gap: 16px;">
+                                        <div style="display: flex; align-items: center; gap: 14px; flex: 1; min-width: 0;">
+                                            <img :src="getMenuItemImage(item.name, item.image_path)" style="width: 60px; height: 45px; object-fit: cover; border-radius: 6px; border: 1px solid rgba(255,255,255,0.05); flex-shrink: 0;">
+                                            <div style="min-width: 0; flex: 1;">
+                                                <h5 style="margin: 0; font-size: 14px; font-weight: 600; color: var(--text-primary); text-overflow: ellipsis; overflow: hidden; white-space: nowrap;" x-text="item.name"></h5>
+                                                <p style="margin: 4px 0 0 0; font-size: 12px; color: var(--text-secondary); display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.3;" :title="item.description" x-text="item.description || 'Нет описания'"></p>
+                                            </div>
+                                        </div>
+                                        <div style="display: flex; align-items: center; gap: 16px; flex-shrink: 0;">
+                                            <span style="font-weight: 700; color: var(--accent-amber); font-size: 14px; white-space: nowrap;" x-text="item.price + ' ₽'"></span>
+                                            <button class="btn btn-secondary btn-sm" @click="deleteMenuItem(item.id)" style="padding: 5px 10px; font-size: 11px; display: flex; align-items: center; gap: 4px; border-color: rgba(198, 40, 40, 0.2); color: #ff8a8a; background: transparent;">
+                                                <i class="fa-solid fa-trash" style="font-size: 10px;"></i> Удалить
+                                            </button>
+                                        </div>
+                                    </div>
+                                </template>
+                                <template x-if="menuItems.length === 0">
+                                    <div style="text-align: center; padding: 40px 10px; color: var(--text-secondary); font-size: 14px;">
+                                        В меню этого ресторана пока нет блюд.
+                                    </div>
+                                </template>
                             </div>
                         </div>
                     </div>
@@ -1075,6 +1173,57 @@
     </div>
 
     <style>
+        /* MENU MANAGER LAYOUT */
+        .menu-manager-layout {
+            display: grid;
+            grid-template-columns: 1fr 1.2fr;
+            gap: 40px;
+        }
+        @media (max-width: 900px) {
+            .menu-manager-layout {
+                grid-template-columns: 1fr;
+            }
+        }
+        .menu-item-row-hover:hover {
+            background: rgba(255,255,255,0.05) !important;
+            border-color: rgba(212, 175, 55, 0.3) !important;
+        }
+
+        /* VISUAL TABLE LAYOUT */
+        .visual-table {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid;
+            transition: var(--transition-smooth);
+            background: var(--bg-card);
+        }
+        .visual-table.available {
+            background: rgba(46, 204, 113, 0.05);
+            border-color: var(--accent-emerald);
+            color: var(--text-primary);
+        }
+        .visual-table.available:hover {
+            background: rgba(46, 204, 113, 0.15);
+            transform: scale(1.05);
+            box-shadow: 0 4px 12px rgba(46, 204, 113, 0.15);
+        }
+        .visual-table.occupied {
+            background: rgba(198, 40, 40, 0.05);
+            border-color: rgba(198, 40, 40, 0.4);
+            color: var(--text-secondary);
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        .visual-table.selected {
+            background: rgba(212, 175, 55, 0.15);
+            border-color: var(--accent-amber);
+            color: var(--text-primary);
+            box-shadow: 0 4px 15px rgba(212, 175, 55, 0.25);
+            transform: scale(1.05);
+        }
+
         .toast-container {
             position: fixed;
             top: 20px;

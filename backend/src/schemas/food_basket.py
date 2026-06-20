@@ -1,6 +1,6 @@
 import datetime as dt
 from typing import Annotated
-from pydantic import Field
+from pydantic import Field, field_validator
 
 from src.core.config import BaseSchema
 from src.schemas.basket_item import BasketItemSchema
@@ -14,6 +14,7 @@ class FoodBasketSchema(BaseSchema):
     order_type: str | None = None
     phone: str | None = None
     address: str | None = None
+    delivery_time: dt.time | None = None
     status: str = "new"
     user_name: str | None = None
 
@@ -26,6 +27,21 @@ class FinalizeOrderSchema(BaseSchema):
     order_type: str  # dinein, delivery
     phone: str
     address: str | None = None
+    delivery_time: dt.time | None = None
+
+    @field_validator("delivery_time", mode="before")
+    def parse_time(cls, v):
+        if isinstance(v, str):
+            if not v.strip():
+                return None
+            try:
+                return dt.datetime.strptime(v.strip(), "%H:%M").time()
+            except ValueError:
+                try:
+                    return dt.datetime.strptime(v.strip(), "%H:%M:%S").time()
+                except ValueError:
+                    raise ValueError("Time should be of the form HH:MM or HH:MM:SS")
+        return v
 
 
 class UpdateOrderStatusSchema(BaseSchema):

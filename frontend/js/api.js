@@ -13,6 +13,22 @@ export function formatTimeOnly(dtStr) {
 }
 
 export const apiState = {
+    // FORMAT DATETIME HELPER
+    formatDateTime(dtStr) {
+        if (!dtStr) return '';
+        try {
+            const dateObj = new Date(dtStr);
+            const yyyy = dateObj.getFullYear();
+            const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
+            const dd = String(dateObj.getDate()).padStart(2, '0');
+            const hh = String(dateObj.getHours()).padStart(2, '0');
+            const min = String(dateObj.getMinutes()).padStart(2, '0');
+            return `${yyyy}-${mm}-${dd} ${hh}:${min}`;
+        } catch (e) {
+            return dtStr;
+        }
+    },
+
     // BACKEND FETCH UTILITY
     async apiRequest(path, method = 'GET', body = null) {
         const headers = {

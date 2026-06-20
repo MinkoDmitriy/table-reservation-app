@@ -6,6 +6,7 @@ export const cartState = {
     orderType: 'dinein',
     orderAddress: '',
     orderNotes: '',
+    orderDeliveryTime: '',
 
     // COMPUTED FOR CART
     basketTotal() {
@@ -83,27 +84,68 @@ export const cartState = {
             this.toastWarning("Пожалуйста, укажите адрес доставки.");
             return;
         }
+        if (!this.orderDeliveryTime) {
+            this.toastWarning("Пожалуйста, выберите время доставки/подачи.");
+            return;
+        }
         
         try {
             const body = {
                 order_type: this.orderType,
                 phone: this.orderPhone,
-                address: this.orderType === 'delivery' ? this.orderAddress : null
+                address: this.orderType === 'delivery' ? this.orderAddress : null,
+                delivery_time: this.orderDeliveryTime
             };
             await this.apiRequest(`/food_baskets/${this.activeBasket.id}`, 'POST', body);
             
             this.successTitle = "Заказ принят!";
             this.successMessage = this.orderType === 'delivery'
-                ? `Ваш предзаказ успешно оформлен. Доставка по адресу: ${this.orderAddress}. Номер телефона: ${this.orderPhone}.`
-                : `Ваш предзаказ успешно оформлен к вашему визиту. Менеджер свяжется с вами по номеру ${this.orderPhone}.`;
+                ? `Ваш предзаказ успешно оформлен. Доставка по адресу: ${this.orderAddress} к ${this.orderDeliveryTime}. Номер телефона: ${this.orderPhone}.`
+                : `Ваш предзаказ успешно оформлен к вашему визиту к ${this.orderDeliveryTime}. Менеджер свяжется с вами по номеру ${this.orderPhone}.`;
             
             this.showSuccessModal = true;
             this.activeBasket = null;
             this.basketItems = [];
             this.orderPhone = '';
             this.orderAddress = '';
+            this.orderDeliveryTime = '';
         } catch (e) {
             this.toastError(`Ошибка оформления заказа: ${e.message}`);
         }
+    },
+
+    getPlaceTimeSlots(placeId) {
+        if (!placeId) return [];
+        const place = this.foodPlaces.find(p => p.id === placeId);
+        if (!place) return [];
+        
+        const parseTime = (timeStr) => {
+            const parts = timeStr.split(':');
+            return {
+                hours: parseInt(parts[0], 10),
+                minutes: parseInt(parts[1], 10)
+            };
+        };
+        
+        const open = parseTime(place.open_time);
+        const close = parseTime(place.close_time);
+        
+        const slots = [];
+        let currentHours = open.hours;
+        let currentMinutes = open.minutes;
+        
+        let endHours = close.hours;
+        if (endHours < currentHours) {
+            endHours += 24;
+        }
+        
+        while (currentHours < endHours || (currentHours === endHours && currentMinutes <= close.minutes)) {
+            const h = currentHours % 24;
+            const hh = String(h).padStart(2, '0');
+            const mm = String(currentMinutes).padStart(2, '0');
+            slots.push(`${hh}:${mm}`);
+            currentHours += 1;
+        }
+        return slots;
     }
 };

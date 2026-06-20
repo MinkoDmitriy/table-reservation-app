@@ -11,9 +11,22 @@ export const dashboardState = {
     revenue: 0,
     reservationStatuses: {},
     managerTab: 'orders',
-    managerSelectedPlaceId: null,
+    managerSelectedPlaceIds: [],
+    managerSelectedMenuPlaceId: null,
+    managerSortField: 'time',
+    managerSortOrder: 'desc',
+
+    toggleSort(field) {
+        if (this.managerSortField === field) {
+            this.managerSortOrder = this.managerSortOrder === 'asc' ? 'desc' : 'asc';
+        } else {
+            this.managerSortField = field;
+            this.managerSortOrder = 'desc';
+        }
+    },
 
     newMenuName: '',
+
     newMenuDesc: '',
     newMenuPrice: '',
     newMenuImagePath: '',
@@ -65,7 +78,8 @@ export const dashboardState = {
     managerCombinedList() {
         const list = [];
         
-        this.managerOrders.forEach(o => {
+        const filteredOrders = this.managerOrders.filter(o => this.managerSelectedPlaceIds.includes(o.food_place_id));
+        filteredOrders.forEach(o => {
             const itemsStr = o.basket_items.map(bi => `${bi.menu_item?.name} x${bi.item_quantity}`).join(', ');
             const total = o.basket_items.reduce((acc, bi) => acc + (bi.menu_item?.price || 0) * bi.item_quantity, 0);
             list.push({
@@ -77,15 +91,17 @@ export const dashboardState = {
                 clientName: o.user_name || `Клиент #${o.user_id}`,
                 phone: o.phone || 'Не указан',
                 details: itemsStr || 'Корзина пуста',
-                subtext: o.order_type === 'delivery' ? o.address : 'Подача в зале к прибытию',
+                subtext: o.order_type === 'delivery' ? (o.delivery_time ? `Доставка по адресу: ${o.address} к ${o.delivery_time.substring(0, 5)}` : `Доставка по адресу: ${o.address}`) : (o.delivery_time ? `Подача в зале к ${o.delivery_time.substring(0, 5)}` : 'Подача в зале к прибытию'),
                 total: total,
                 status: o.status || 'new',
                 status_display: this.getStatusDisplay(o.status || 'new'),
-                time_only: formatTimeOnly(o.ordered_at)
+                time_display: o.ordered_at ? this.formatDateTime(o.ordered_at) : '—',
+                raw_time: o.ordered_at ? new Date(o.ordered_at).getTime() : 0
             });
         });
         
-        this.managerReservations.forEach(r => {
+        const filteredReservations = this.managerReservations.filter(r => this.managerSelectedPlaceIds.includes(r.food_place_id));
+        filteredReservations.forEach(r => {
             const dt = new Date(r.start_datetime);
             const yyyy = dt.getFullYear();
             const mm = String(dt.getMonth() + 1).padStart(2, '0');
@@ -111,12 +127,31 @@ export const dashboardState = {
                 total: 0,
                 status: this.reservationStatuses[r.id] || 'new',
                 status_display: this.getStatusDisplay(this.reservationStatuses[r.id] || 'new'),
-                time_only: formatTimeOnly(r.start_datetime)
+                time_display: r.start_datetime ? this.formatDateTime(r.start_datetime) : '—',
+                raw_time: r.start_datetime ? new Date(r.start_datetime).getTime() : 0
             });
         });
         
-        return list.sort((a, b) => b.id - a.id);
+        list.sort((a, b) => {
+            let valA, valB;
+            if (this.managerSortField === 'time') {
+                valA = a.raw_time;
+                valB = b.raw_time;
+            } else {
+                valA = a.id;
+                valB = b.id;
+            }
+            
+            if (this.managerSortOrder === 'asc') {
+                return valA - valB;
+            } else {
+                return valB - valA;
+            }
+        });
+        
+        return list;
     },
+
 
     async fetchManagerData() {
         if (!this.currentUser) return;
@@ -131,10 +166,16 @@ export const dashboardState = {
                 this.managerSelectedCityId = this.managerCities()[0].id;
             }
             const filtered = this.managerFilteredPlaceIds();
-            if (filtered.length > 0 && !this.managerSelectedPlaceId) {
-                this.managerSelectedPlaceId = filtered[0];
+            if (filtered.length > 0 && this.managerSelectedPlaceIds.length === 0) {
+                this.managerSelectedPlaceIds = [...filtered];
+            }
+            if (filtered.length > 0 && !this.managerSelectedMenuPlaceId) {
+                this.managerSelectedMenuPlaceId = filtered[0];
             }
             await this.refreshManagerData();
+            if (this.managerTab === 'menu' && this.managerSelectedMenuPlaceId) {
+                await this.fetchMenuItems(this.managerSelectedMenuPlaceId);
+            }
         } catch (e) {
             console.error("Manager data fetch error", e);
         }
@@ -145,16 +186,14 @@ export const dashboardState = {
             this.managerOrders = await this.apiRequest('/food_baskets/orders');
             this.managerReservations = await this.apiRequest('/reservations/all');
             
-            if (this.managerSelectedPlaceId) {
-                const placeOrders = this.managerOrders.filter(o => o.food_place_id === this.managerSelectedPlaceId || !o.food_place_id);
-                this.totalOrders = placeOrders.length;
-            } else {
-                this.totalOrders = this.managerOrders.length;
-            }
-            this.totalReservations = this.managerReservations.length;
+            const placeOrders = this.managerOrders.filter(o => this.managerSelectedPlaceIds.includes(o.food_place_id));
+            this.totalOrders = placeOrders.length;
+            
+            const placeReservations = this.managerReservations.filter(r => this.managerSelectedPlaceIds.includes(r.food_place_id));
+            this.totalReservations = placeReservations.length;
             
             let revenueSum = 0;
-            this.managerOrders.forEach(o => {
+            placeOrders.forEach(o => {
                 if (o.status !== 'cancelled') {
                     o.basket_items.forEach(bi => {
                         revenueSum += (bi.menu_item?.price || 0) * bi.item_quantity;
@@ -166,6 +205,15 @@ export const dashboardState = {
             console.error("Manager data fetch error", e);
             this.toastError(`Ошибка загрузки панели управления: ${e.message}`);
         }
+    },
+    
+    toggleSelectedPlace(placeId) {
+        if (this.managerSelectedPlaceIds.includes(placeId)) {
+            this.managerSelectedPlaceIds = this.managerSelectedPlaceIds.filter(id => id !== placeId);
+        } else {
+            this.managerSelectedPlaceIds.push(placeId);
+        }
+        this.refreshManagerData();
     },
     
     async updateOrderStatus(orderId, newStatus) {
@@ -234,12 +282,12 @@ export const dashboardState = {
         try {
             const body = {
                 name: this.newMenuName, description: this.newMenuDesc,
-                price: parseFloat(this.newMenuPrice), food_place_id: this.managerSelectedPlaceId,
+                price: parseFloat(this.newMenuPrice), food_place_id: this.managerSelectedMenuPlaceId,
                 image_path: this.newMenuImagePath || null
             };
             await this.apiRequest('/menu_items', 'POST', body);
             this.newMenuName = ''; this.newMenuDesc = ''; this.newMenuPrice = ''; this.newMenuImagePath = '';
-            await this.fetchMenuItems(this.managerSelectedPlaceId);
+            await this.fetchMenuItems(this.managerSelectedMenuPlaceId);
             this.toastSuccess("Блюдо добавлено в меню!");
         } catch (e) {
             this.toastError(`Ошибка: ${e.message}`);
@@ -250,7 +298,7 @@ export const dashboardState = {
         if (!await showConfirm("Удалить это блюдо из меню?")) return;
         try {
             await this.apiRequest(`/menu_items/${itemId}`, 'DELETE');
-            await this.fetchMenuItems(this.managerSelectedPlaceId);
+            await this.fetchMenuItems(this.managerSelectedMenuPlaceId);
             this.toastSuccess("Блюдо удалено!");
         } catch (e) {
             this.toastError(`Ошибка: ${e.message}`);

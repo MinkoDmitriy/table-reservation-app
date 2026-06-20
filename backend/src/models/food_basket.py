@@ -25,6 +25,7 @@ class FoodBasket(Base):
     order_type: Mapped[str | None] = mapped_column(default="dinein", nullable=True)
     phone: Mapped[str | None] = mapped_column(nullable=True)
     address: Mapped[str | None] = mapped_column(nullable=True)
+    delivery_time: Mapped[dt.time | None] = mapped_column(nullable=True)
     status: Mapped[str] = mapped_column(default="new", nullable=False)
 
     # Relationships
@@ -40,10 +41,11 @@ class FoodBasket(Base):
                                                             cascade="all, delete-orphan",
                                                             passive_deletes=True, back_populates="food_basket")
 
-    def mark_ordered(self, order_type: str, phone: str, address: str | None = None):
+    def mark_ordered(self, order_type: str, phone: str, address: str | None = None, delivery_time: dt.time | None = None):
         self.ordered_at = dt.datetime.now()
         self.is_ordered = True
         self.order_type = order_type
         self.phone = phone
         self.address = address
+        self.delivery_time = delivery_time
         self.status = "new"

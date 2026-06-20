@@ -78,6 +78,6 @@ async def list_food_place_menu_items(food_place_id: int, session: db_dep) -> lis
     food_place = await session.get(FoodPlace, food_place_id)
     if not food_place:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ресторан не найден")
-    menu_items = await session.scalars(select(MenuItem).where(MenuItem.food_place_id == food_place_id))
+    menu_items = await session.scalars(select(MenuItem).where(MenuItem.food_place_id == food_place_id, MenuItem.is_active == True))
     menu_items_schemas = [MenuItemSchema.model_validate(menu_item) for menu_item in menu_items]
     return menu_items_schemas
