@@ -13,6 +13,13 @@ export const dashboardState = {
     managerTab: 'orders',
     managerSelectedPlaceIds: [],
     managerSelectedMenuPlaceId: null,
+    managerSelectedTablesPlaceId: null,
+    managerTables: [],
+    newTableNumber: '',
+    newTableMaxSeats: '',
+    editTableId: null,
+    editTableNumber: '',
+    editTableMaxSeats: '',
     managerSortField: 'time',
     managerSortOrder: 'desc',
 
@@ -430,6 +437,84 @@ export const dashboardState = {
             });
             manager.managed_place_ids = newIds;
             this.toastSuccess("Рестораны обновлены!");
+        } catch (e) {
+            this.toastError(`Ошибка: ${e.message}`);
+        }
+    },
+
+    async fetchManagerTables(placeId) {
+        if (!placeId) {
+            this.managerTables = [];
+            return;
+        }
+        try {
+            this.managerTables = await this.apiRequest(`/food_tables?food_place_id=${placeId}`);
+        } catch (e) {
+            console.error("Error loading tables", e);
+            this.managerTables = [];
+        }
+    },
+
+    async addTable() {
+        if (!this.newTableNumber.trim() || !this.newTableMaxSeats) {
+            this.toastWarning("Заполните номер стола и количество мест.");
+            return;
+        }
+        try {
+            await this.apiRequest('/food_tables', 'POST', {
+                table_number: this.newTableNumber.trim(),
+                max_seats: parseInt(this.newTableMaxSeats),
+                food_place_id: this.managerSelectedTablesPlaceId
+            });
+            this.newTableNumber = '';
+            this.newTableMaxSeats = '';
+            await this.fetchManagerTables(this.managerSelectedTablesPlaceId);
+            this.toastSuccess("Стол добавлен!");
+        } catch (e) {
+            this.toastError(`Ошибка: ${e.message}`);
+        }
+    },
+
+    startEditTable(table) {
+        this.editTableId = table.id;
+        this.editTableNumber = table.table_number;
+        this.editTableMaxSeats = String(table.max_seats);
+    },
+
+    cancelEditTable() {
+        this.editTableId = null;
+        this.editTableNumber = '';
+        this.editTableMaxSeats = '';
+        this.newTableNumber = '';
+        this.newTableMaxSeats = '';
+    },
+
+    async saveEditTable() {
+        if (!this.editTableNumber.trim() || !this.editTableMaxSeats) {
+            this.toastWarning("Заполните номер стола и количество мест.");
+            return;
+        }
+        try {
+            await this.apiRequest(`/food_tables/${this.editTableId}`, 'PUT', {
+                table_number: this.editTableNumber.trim(),
+                max_seats: parseInt(this.editTableMaxSeats)
+            });
+            this.editTableId = null;
+            this.editTableNumber = '';
+            this.editTableMaxSeats = '';
+            await this.fetchManagerTables(this.managerSelectedTablesPlaceId);
+            this.toastSuccess("Стол обновлён!");
+        } catch (e) {
+            this.toastError(`Ошибка: ${e.message}`);
+        }
+    },
+
+    async deleteTable(tableId) {
+        if (!await showConfirm("Удалить этот стол? Все связанные бронирования также будут удалены.")) return;
+        try {
+            await this.apiRequest(`/food_tables/${tableId}`, 'DELETE');
+            await this.fetchManagerTables(this.managerSelectedTablesPlaceId);
+            this.toastSuccess("Стол удалён!");
         } catch (e) {
             this.toastError(`Ошибка: ${e.message}`);
         }

@@ -532,7 +532,7 @@
                         <div style="display: flex; align-items: center; gap: 8px;">
                             <label style="font-weight: 500; white-space: nowrap;">Город:</label>
                             <select x-model.number="managerSelectedCityId"
-                                    @change="managerSelectedPlaceIds = managerFilteredPlaceIds(); managerSelectedMenuPlaceId = managerFilteredPlaceIds()[0] || null; refreshManagerData(); if (managerSelectedMenuPlaceId) { fetchMenuItems(managerSelectedMenuPlaceId); }"
+                                    @change="managerSelectedPlaceIds = managerFilteredPlaceIds(); managerSelectedMenuPlaceId = managerFilteredPlaceIds()[0] || null; managerSelectedTablesPlaceId = managerFilteredPlaceIds()[0] || null; refreshManagerData(); if (managerSelectedMenuPlaceId) { fetchMenuItems(managerSelectedMenuPlaceId); } if (managerSelectedTablesPlaceId) { fetchManagerTables(managerSelectedTablesPlaceId); } else { managerTables = []; }"
                                     style="padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-card); color: var(--text-primary);">
                                 <template x-for="city in managerCities()" :key="city.id">
                                     <option :value="city.id" x-text="city.name"></option>
@@ -545,6 +545,9 @@
                 <div class="tabs-nav" style="margin-top: 0; margin-bottom: 30px;">
                     <button class="tab-btn" :class="{ 'active': managerTab === 'orders' }" @click="managerTab = 'orders'">
                         <span class="icon"><i class="fa-solid fa-list-check"></i></span> Заказы и Брони
+                    </button>
+                    <button class="tab-btn" :class="{ 'active': managerTab === 'tables' }" @click="managerTab = 'tables'; if (!managerSelectedTablesPlaceId || !managerFilteredPlaceIds().includes(managerSelectedTablesPlaceId)) { managerSelectedTablesPlaceId = managerFilteredPlaceIds()[0] || null; } if (managerSelectedTablesPlaceId) { fetchManagerTables(managerSelectedTablesPlaceId); } else { managerTables = []; }">
+                        <span class="icon"><i class="fa-solid fa-chair"></i></span> Столы ресторана
                     </button>
                     <button class="tab-btn" :class="{ 'active': managerTab === 'menu' }" @click="managerTab = 'menu'; if (!managerSelectedMenuPlaceId && managerFilteredPlaceIds().length > 0) { managerSelectedMenuPlaceId = managerFilteredPlaceIds()[0]; } fetchMenuItems(managerSelectedMenuPlaceId);">
                         <span class="icon"><i class="fa-solid fa-utensils"></i></span> Меню ресторана
@@ -650,7 +653,76 @@
                         </div>
                     </div>
                 </div>
-                
+
+                <!-- SUB-TAB: TABLES MANAGEMENT -->
+                <div class="tab-pane" :class="{ 'active': managerTab === 'tables' }" x-show="managerTab === 'tables'">
+                    <!-- Single Place Selector for Tables -->
+                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 24px; background: var(--bg-secondary); padding: 12px 20px; border-radius: 12px; border: 1px solid var(--border-color); width: 100%;">
+                        <label style="font-weight: 600; white-space: nowrap; color: var(--text-primary);">Ресторан для управления столами:</label>
+                        <select x-model.number="managerSelectedTablesPlaceId" @change="fetchManagerTables(managerSelectedTablesPlaceId)"
+                                style="padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-card); color: var(--text-primary); min-width: 250px;">
+                            <template x-for="placeId in managerFilteredPlaceIds()" :key="placeId">
+                                <option :value="placeId" x-text="getPlaceNameById(placeId)"></option>
+                            </template>
+                        </select>
+                    </div>
+
+                    <div class="menu-manager-layout">
+                        <!-- Left Panel: Add/Edit Table Form -->
+                        <div class="reservation-form-panel">
+                            <h3 x-text="editTableId ? 'Редактировать стол' : 'Добавить новый стол'"></h3>
+                            <form @submit.prevent="editTableId ? saveEditTable() : addTable()">
+                                <div class="form-group">
+                                    <label>Номер стола</label>
+                                    <input type="text" x-model="editTableId ? editTableNumber : newTableNumber" :placeholder="editTableId ? 'Номер стола' : 'Например: 1, 2, A1'" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Максимум мест</label>
+                                    <input type="number" min="1" max="20" x-model.number="editTableId ? editTableMaxSeats : newTableMaxSeats" placeholder="Количество гостей" required>
+                                </div>
+                                <div style="display: flex; gap: 8px; margin-top: 20px;">
+                                    <button type="submit" class="btn btn-primary btn-block" x-text="editTableId ? 'Сохранить изменения' : 'Добавить стол'"></button>
+                                    <button type="button" class="btn btn-secondary" x-show="editTableId" @click="cancelEditTable()" style="flex-shrink: 0;">Отмена</button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <!-- Right Panel: Current Tables List -->
+                        <div class="table-map-panel" style="padding: 30px;">
+                            <h3>Текущие столы</h3>
+                            <p class="map-hint">Список столов в этом ресторане</p>
+                            <div style="max-height: 420px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; padding-right: 8px;">
+                                <template x-for="table in managerTables" :key="table.id">
+                                    <div style="display: flex; align-items: center; justify-content: space-between; background: rgba(255,255,255,0.015); border: 1px solid var(--border-color); padding: 14px 16px; border-radius: var(--border-radius-md); transition: var(--transition-smooth); gap: 16px;">
+                                        <div style="display: flex; align-items: center; gap: 14px; flex: 1; min-width: 0;">
+                                            <div style="width: 50px; height: 50px; border-radius: 10px; background: rgba(212, 175, 55, 0.15); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                                                <i class="fa-solid fa-chair" style="font-size: 20px; color: var(--accent-amber);"></i>
+                                            </div>
+                                            <div style="min-width: 0; flex: 1;">
+                                                <h5 style="margin: 0; font-size: 14px; font-weight: 600; color: var(--text-primary);" x-text="'Стол ' + table.table_number"></h5>
+                                                <p style="margin: 4px 0 0 0; font-size: 12px; color: var(--text-secondary);" x-text="table.max_seats + ' мест'"></p>
+                                            </div>
+                                        </div>
+                                        <div style="display: flex; align-items: center; gap: 8px; flex-shrink: 0;">
+                                            <button class="btn btn-secondary btn-sm" @click="startEditTable(table)" style="padding: 5px 10px; font-size: 11px; display: flex; align-items: center; gap: 4px;">
+                                                <i class="fa-solid fa-pen" style="font-size: 10px;"></i> Изменить
+                                            </button>
+                                            <button class="btn btn-secondary btn-sm" @click="deleteTable(table.id)" style="padding: 5px 10px; font-size: 11px; display: flex; align-items: center; gap: 4px; border-color: rgba(198, 40, 40, 0.2); color: #ff8a8a; background: transparent;">
+                                                <i class="fa-solid fa-trash" style="font-size: 10px;"></i> Удалить
+                                            </button>
+                                        </div>
+                                    </div>
+                                </template>
+                                <template x-if="managerTables.length === 0">
+                                    <div style="text-align: center; padding: 40px 10px; color: var(--text-secondary); font-size: 14px;">
+                                        В этом ресторане пока нет столов.
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- SUB-TAB: MENU MANAGEMENT -->
                 <div class="tab-pane" :class="{ 'active': managerTab === 'menu' }" x-show="managerTab === 'menu'">
                     <!-- Single Place Selector for Menu -->

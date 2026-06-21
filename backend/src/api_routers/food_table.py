@@ -51,13 +51,18 @@ async def update_food_table(food_table_id: int, food_table_schema: UpdateFoodTab
     food_table = await session.get(FoodTable, food_table_id)
     if food_table is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Столик не найден")
-    check_request = select(FoodTable).where(
-        FoodTable.table_number == food_table_schema.table_number, FoodTable.food_place_id == food_table.food_place_id)
-    if (await session.execute(check_request)).scalar_one_or_none():
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT,
-                            detail="Столик с таким номером уже существует в этом ресторане")
+    if food_table_schema.table_number is not None:
+        check_request = select(FoodTable).where(
+            FoodTable.id != food_table_id,
+            FoodTable.table_number == food_table_schema.table_number,
+            FoodTable.food_place_id == food_table.food_place_id
+        )
+        if (await session.execute(check_request)).scalar_one_or_none():
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT,
+                                detail="Столик с таким номером уже существует в этом ресторане")
     for attr, value in food_table_schema.model_dump().items():
-        setattr(food_table, attr, value)
+        if value is not None:
+            setattr(food_table, attr, value)
     await session.commit()
     await session.refresh(food_table)
     return FoodTableSchema.model_validate(food_table)
