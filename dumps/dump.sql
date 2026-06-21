@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict SscvuyTztRfbckQfWmPOiltWiJ7jCIFZI6FlxgM9cCpEWfM4Sjzhrgd5qydcz1V
+\restrict OtMMxeJb9ghzezYnrkaBwgONN50hAxQPgoahw6tNlJV7081T9qfvatwDdxscYOu
 
 -- Dumped from database version 17.10
 -- Dumped by pg_dump version 17.10
@@ -151,7 +151,8 @@ CREATE TABLE public.food_baskets (
     order_type character varying,
     phone character varying,
     address character varying,
-    status character varying NOT NULL
+    status character varying NOT NULL,
+    delivery_time time without time zone
 );
 
 
@@ -299,7 +300,8 @@ CREATE TABLE public.menu_items (
     price numeric(10,2) NOT NULL,
     description character varying,
     food_place_id integer NOT NULL,
-    image_path character varying
+    image_path character varying,
+    is_active boolean DEFAULT true NOT NULL
 );
 
 
@@ -560,7 +562,7 @@ ALTER TABLE ONLY public.users ALTER COLUMN id SET DEFAULT nextval('public.users_
 --
 
 COPY public.alembic_version (version_num) FROM stdin;
-c3d4e5f6g7h8
+f0ca41960823
 \.
 
 
@@ -584,11 +586,11 @@ COPY public.basket_items (id, item_quantity, menu_item_id, food_basket_id) FROM 
 -- Data for Name: food_baskets; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-COPY public.food_baskets (id, ordered_at, is_ordered, user_id, food_place_id, order_type, phone, address, status) FROM stdin;
-6	2026-06-04 12:15:00	t	15	4	dinein	+7 (911) 234-56-78	\N	preparing
-8	\N	f	20	4	dinein	\N	\N	new
-9	\N	f	19	4	dinein	\N	\N	new
-7	2026-06-04 13:45:00	t	17	4	delivery	+7 (999) 888-77-66	ул. Петровка, д. 10, кв. 42	new
+COPY public.food_baskets (id, ordered_at, is_ordered, user_id, food_place_id, order_type, phone, address, status, delivery_time) FROM stdin;
+6	2026-06-04 12:15:00	t	15	4	dinein	+7 (911) 234-56-78	\N	preparing	\N
+8	\N	f	20	4	dinein	\N	\N	new	\N
+9	\N	f	19	4	dinein	\N	\N	new	\N
+7	2026-06-04 13:45:00	t	17	4	delivery	+7 (999) 888-77-66	ул. Петровка, д. 10, кв. 42	new	\N
 \.
 
 
@@ -643,19 +645,19 @@ COPY public.locations (id, name) FROM stdin;
 -- Data for Name: menu_items; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-COPY public.menu_items (id, name, price, description, food_place_id, image_path) FROM stdin;
-13	Пицца Маргарита	650.00	Томатный соус, моцарелла, базилик, оливковое масло	4	\N
-14	Паста Карбонара	790.00	Спагетти, гуанчиале, яичный желток, пекорино романо	4	\N
-15	Флорентийский стейк	2400.00	Сочный стейк Рибай из мраморной говядины на гриле	4	\N
-16	Тирамису Классик	420.00	Маскарпоне, савоярди, кофе эспрессо, какао-порошок	4	\N
-17	Лимонад Базилик	350.00	Свежий базилик, сок лимона, содовая, тростниковый сахар	4	\N
-18	Сет Нигири Премиум	1850.00	Лосось, тунец, угорь, креветка, морской гребешок	5	\N
-19	Ролл Филадельфия	820.00	Лосось, сливочный сыр, огурец, икра тобико	5	\N
-20	Суп Рамен с уткой	690.00	Утиная грудка, пшеничная лапша, яйцо аджитама, бульон	5	\N
-21	Моти Ассорти	450.00	Японские пирожные с матчей, манго и клубникой	5	\N
-22	Чай Сентя	300.00	Традиционный японский зеленый чай из листьев нового урожая	5	\N
-23	Блины с красной икрой	950.00	Тонкие пшеничные блины, красная икра, фермерская сметана	6	\N
-24	Бефстроганов	1100.00	Вырезка говяжья, лесные грибы, картофельное пюре	6	\N
+COPY public.menu_items (id, name, price, description, food_place_id, image_path, is_active) FROM stdin;
+13	Пицца Маргарита	650.00	Томатный соус, моцарелла, базилик, оливковое масло	4	\N	t
+14	Паста Карбонара	790.00	Спагетти, гуанчиале, яичный желток, пекорино романо	4	\N	t
+15	Флорентийский стейк	2400.00	Сочный стейк Рибай из мраморной говядины на гриле	4	\N	t
+16	Тирамису Классик	420.00	Маскарпоне, савоярди, кофе эспрессо, какао-порошок	4	\N	t
+17	Лимонад Базилик	350.00	Свежий базилик, сок лимона, содовая, тростниковый сахар	4	\N	t
+18	Сет Нигири Премиум	1850.00	Лосось, тунец, угорь, креветка, морской гребешок	5	\N	t
+19	Ролл Филадельфия	820.00	Лосось, сливочный сыр, огурец, икра тобико	5	\N	t
+20	Суп Рамен с уткой	690.00	Утиная грудка, пшеничная лапша, яйцо аджитама, бульон	5	\N	t
+21	Моти Ассорти	450.00	Японские пирожные с матчей, манго и клубникой	5	\N	t
+22	Чай Сентя	300.00	Традиционный японский зеленый чай из листьев нового урожая	5	\N	t
+23	Блины с красной икрой	950.00	Тонкие пшеничные блины, красная икра, фермерская сметана	6	\N	t
+24	Бефстроганов	1100.00	Вырезка говяжья, лесные грибы, картофельное пюре	6	\N	t
 \.
 
 
@@ -684,6 +686,7 @@ COPY public.reservations (id, start_datetime, duration_in_minutes, user_id, food
 COPY public.restaurant_managers (user_id, food_place_id) FROM stdin;
 18	4
 18	5
+21	4
 \.
 
 
@@ -1073,5 +1076,5 @@ ALTER TABLE ONLY public.users
 -- PostgreSQL database dump complete
 --
 
-\unrestrict SscvuyTztRfbckQfWmPOiltWiJ7jCIFZI6FlxgM9cCpEWfM4Sjzhrgd5qydcz1V
+\unrestrict OtMMxeJb9ghzezYnrkaBwgONN50hAxQPgoahw6tNlJV7081T9qfvatwDdxscYOu
 
