@@ -81,8 +81,10 @@ async def order_basket(basket_id: int, order_data: FinalizeOrderSchema, session:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Корзина не найдена")
     if food_basket.is_ordered:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Заказ для этой корзины уже оформлен")
+    if not order_data.phone or not order_data.phone.strip():
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Необходимо указать телефон")
     if order_data.order_type == "delivery" and not order_data.address:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Необходимо указать адрес доставки")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Необходимо указать адрес доставки")
         
     food_basket.mark_ordered(
         order_type=order_data.order_type,

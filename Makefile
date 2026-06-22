@@ -1,4 +1,4 @@
-.PHONY: up down restart ps logs migrate migration db-dump db-reset db-shell clean
+.PHONY: up down restart ps logs migrate migration db-dump db-reset db-shell clean load-test-menu load-test-order load-test-menu-local load-test-order-local test test-local
 
 # Start all services in the background and build/rebuild container images
 up:
@@ -60,3 +60,33 @@ db-shell: ## Enter Postgres shell
 # Stop containers and completely wipe database and MinIO volumes (Factory Reset)
 clean:
 	docker compose down -v
+
+# Variables for load testing (concurrency and target URL)
+c ?= 500
+url ?= http://localhost:8000
+
+# Run load test for GET /api/menu_items (inside container)
+load-test-menu:
+	docker compose exec -T backend python scripts/load_test.py menu --concurrency $(c) --url $(url)
+
+# Run load test for POST /api/food_baskets/{id} (inside container)
+load-test-order:
+	docker compose exec -T backend python scripts/load_test.py order --concurrency $(c) --url $(url)
+
+# Run load test for GET /api/menu_items (locally on host)
+load-test-menu-local:
+	python backend/scripts/load_test.py menu --concurrency $(c) --url $(url)
+
+# Run load test for POST /api/food_baskets/{id} (locally on host)
+load-test-order-local:
+	python backend/scripts/load_test.py order --concurrency $(c) --url $(url)
+
+# Run pytest tests inside docker container
+test:
+	docker compose exec -T backend pytest tests
+
+# Run pytest tests locally on host
+test-local:
+	PYTHONPATH=backend uv run --project backend pytest backend/tests
+
+
